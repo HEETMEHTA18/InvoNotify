@@ -14,13 +14,13 @@ import {
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const session = await requireUser();
-    
+
     return (
         <div className="flex h-screen bg-white text-gray-900">
             <aside className="w-64 border-r border-gray-200 bg-white p-4">
                 <Link href="/dashboard" className="flex items-center gap-2 mb-8 px-2">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white font-bold">
-                        <span className="text-lg">📋</span>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 text-white font-bold">
+                        <FileText className="h-6 w-6 text-white" />
                     </div>
                     <span className="text-xl font-bold">
                         <span className="text-gray-900">IMS</span>
@@ -31,7 +31,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
                     <DashboardLinks />
                 </nav>
             </aside>
-
             <div className="flex-1 flex flex-col">
                 <header className="flex items-center justify-end border-b border-gray-200 px-6 py-3">
                     <DropdownMenu>

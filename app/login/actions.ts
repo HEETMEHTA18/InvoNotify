@@ -3,6 +3,7 @@
 import { signIn } from "@/app/utils/auth"
 import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
+import { Prisma } from "@prisma/client"
 
 export async function handleEmailSignIn(formData: FormData) {
   const email = formData.get("email") as string
@@ -14,14 +15,22 @@ export async function handleEmailSignIn(formData: FormData) {
       redirect: false,
     })
   } catch (error) {
-    // Re-throw redirect errors (they're not actual errors)
     if (isRedirectError(error)) {
       throw error
     }
+
+    if (
+      error instanceof Prisma.PrismaClientInitializationError ||
+      (error instanceof Error &&
+        typeof error.message === "string" &&
+        error.message.includes("AdapterError"))
+    ) {
+      redirect("/login?error=db_unavailable")
+    }
+
     console.error("Sign in error:", error)
-    throw error
+    redirect("/login?error=signin_failed")
   }
 
-  // Move redirect outside try/catch to avoid catching redirect "error"
   redirect("/verify")
 }

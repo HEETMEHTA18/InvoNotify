@@ -6,7 +6,11 @@ import { auth } from "@/app/utils/auth";
 import { redirect } from "next/navigation";
 import { SubmitButton } from "../components/SubmitButtom";
 
-export default async function Login({ searchParams }: { searchParams: Promise<{ verify?: string }> })
+export default async function Login({
+    searchParams,
+}: {
+    searchParams: Promise<{ verify?: string; error?: string }>
+})
 {
     const session = await auth()
     if (session?.user) {
@@ -15,6 +19,12 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
 
     const params = await searchParams
     const isVerifying = params?.verify === "true"
+    const errorMessage =
+        params?.error === "db_unavailable"
+            ? "Sign-in is temporarily unavailable because the database connection failed. Check DATABASE_URL and Neon status, then try again."
+            : params?.error === "signin_failed"
+            ? "Sign-in failed. Please try again."
+            : null
 
     return (
         <div className="flex h-screen w-full items-center justify-center px-4">
@@ -28,6 +38,11 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+                    {errorMessage ? (
+                        <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            {errorMessage}
+                        </p>
+                    ) : null}
                     {!isVerifying && (
                     <form action={handleEmailSignIn}>
                     <div className="grid gap-4">

@@ -82,3 +82,55 @@ model Authenticator {
 
   @@id([userId, credentialID])
 }
+
+model Invoice {
+  id              Int           @id @default(autoincrement())
+  // Sender info
+  senderName      String        @default("")
+  senderEmail     String        @default("")
+  senderAddress   String        @default("")
+  // Client info
+  clientName      String        @default("")
+  clientEmail     String        @default("")
+  clientAddress   String        @default("")
+  // Invoice details
+  invoiceNumber   String        @default("")
+  date            DateTime      @default(now())
+  dueDate         DateTime?
+  status          String        @default("Pending")
+  // Financials
+  subtotal        Decimal       @default(0) @db.Decimal(10,2)
+  tax             Decimal       @default(0) @db.Decimal(10,2)
+  total           Decimal       @default(0) @db.Decimal(10,2)
+  // Note
+  note            String        @default("")
+  // Currency
+  currency        String        @default("USD")
+
+  // Legacy field kept for backwards compat
+  customer        String        @default("")
+  amount          Decimal       @default(0) @db.Decimal(10,2)
+
+  items           InvoiceItem[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model InvoiceItem {
+  id          Int     @id @default(autoincrement())
+  description String
+  quantity    Int     @default(1)
+  rate        Decimal @db.Decimal(10,2)
+  amount      Decimal @db.Decimal(10,2)
+  invoiceId   Int
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model CompanySettings {
+  id        Int      @id @default(autoincrement())
+  userId    String   @unique
+  logo      String?  // Base64 encoded logo
+  signature String?  // Base64 encoded signature
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,10 @@
+-- CreateTable
+CREATE TABLE "Invoice" (
+    "id" SERIAL PRIMARY KEY,
+    "customer" TEXT NOT NULL,
+    "amount" DECIMAL(10,2) NOT NULL,
+    "status" TEXT NOT NULL,
+    "date" DATE NOT NULL DEFAULT CURRENT_DATE,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
