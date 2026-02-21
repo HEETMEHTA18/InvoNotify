@@ -126,8 +126,8 @@ export async function GET(req: NextRequest) {
             .sort((a, b) => b.totalOverdue - a.totalOverdue)
             .slice(0, 10);
 
-        // 5. Recent Activity (Last 5 Invoices)
-        const recentActivity = await prisma.invoice.findMany({
+        // 5. Recent Activity (Last 5 Invoices) with computed overdue status
+        const recentInvoicesRaw = await prisma.invoice.findMany({
             take: 5,
             orderBy: { date: 'desc' },
             select: {
@@ -137,8 +137,29 @@ export async function GET(req: NextRequest) {
                 total: true,
                 status: true,
                 date: true,
+                dueDate: true,
                 invoiceNumber: true
             }
+        });
+
+        // Compute overdue status for recent activity
+        const recentActivity = recentInvoicesRaw.map(inv => {
+            let status = inv.status;
+            if (status !== "Paid" && inv.dueDate) {
+                const dueDate = new Date(inv.dueDate);
+                if (dueDate < now) {
+                    status = "Overdue";
+                }
+            }
+            return {
+                id: inv.id,
+                clientName: inv.clientName,
+                amount: inv.amount,
+                total: inv.total,
+                status,
+                date: inv.date,
+                invoiceNumber: inv.invoiceNumber
+            };
         });
 
         // 6. Chart Data: Monthly Revenue (Last 6 Months)
@@ -180,16 +201,37 @@ export async function GET(req: NextRequest) {
             .map(([month, revenue]) => ({ month, revenue }))
             .reverse();
 
-        // 7. Chart Data: Status Distribution
-        const statusDistributionRaw = await prisma.invoice.groupBy({
-            by: ['status'],
-            _count: { _all: true }
+        // 7. Chart Data: Status Distribution with Overdue
+        const now = new Date();
+        
+        // Get all invoices with their status
+        const allInvoices = await prisma.invoice.findMany({
+            select: {
+                status: true,
+                dueDate: true,
+            }
         });
 
-        const statusDistribution = statusDistributionRaw.map(item => ({
-            name: item.status,
-            value: item._count._all
-        }));
+        // Calculate status distribution including overdue
+        const statusMap = new Map<string, number>();
+        
+        allInvoices.forEach(invoice => {
+            let status = invoice.status;
+            
+            // Check if invoice is overdue (not paid and past due date)
+            if (status !== "Paid" && invoice.dueDate) {
+                const dueDate = new Date(invoice.dueDate);
+                if (dueDate < now) {
+                    status = "Overdue";
+                }
+            }
+            
+            statusMap.set(status, (statusMap.get(status) || 0) + 1);
+        });
+
+        const statusDistribution = Array.from(statusMap.entries())
+            .map(([name, value]) => ({ name, value }))
+            .filter(item => item.value > 0); // Only include statuses with invoices
 
         return NextResponse.json({
             kpi: {

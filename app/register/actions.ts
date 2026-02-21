@@ -10,22 +10,24 @@ export async function handleRegister(formData: FormData) {
     const email = formData.get("email") as string
     const password = formData.get("password") as string
 
-    if (!email || !password) {
+    if (!email || !password || !name) {
         redirect("/register?error=missing_fields")
     }
 
     try {
+        // Check if user already exists
         const existingUser = await prisma.user.findUnique({
             where: { email },
         })
 
         if (existingUser) {
-            redirect("/login?error=user_exists")
+            redirect("/register?error=user_exists")
         }
 
+        // Hash password and create user
         const hashedPassword = await bcrypt.hash(password, 10)
 
-        await prisma.user.create({
+        const newUser = await prisma.user.create({
             data: {
                 name,
                 email,
@@ -33,12 +35,19 @@ export async function handleRegister(formData: FormData) {
             },
         })
 
-        redirect("/dashboard")
+        console.log("✅ User created successfully:", newUser.email)
+
+        // Redirect to login page with success message
+        redirect("/login?success=registered")
     } catch (error) {
         if (isRedirectError(error)) {
             throw error
         }
-        console.error("Registration error:", error)
+        console.error("❌ Registration error details:", error)
+        if (error instanceof Error) {
+            console.error("Error message:", error.message)
+            console.error("Error stack:", error.stack)
+        }
         redirect("/register?error=registration_failed")
     }
 }

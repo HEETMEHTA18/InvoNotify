@@ -10,7 +10,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -85,55 +84,55 @@ model Authenticator {
 }
 
 model Invoice {
-  id              Int           @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   // Sender info
-  senderName      String        @default("")
-  senderEmail     String        @default("")
-  senderAddress   String        @default("")
+  senderName    String    @default("")
+  senderEmail   String    @default("")
+  senderAddress String    @default("")
   // Client info
-  clientName      String        @default("")
-  clientEmail     String        @default("")
-  clientAddress   String        @default("")
+  clientName    String    @default("")
+  clientEmail   String    @default("")
+  clientAddress String    @default("")
   // Invoice details
-  invoiceNumber   String        @default("")
-  date            DateTime      @default(now())
-  dueDate         DateTime?
-  status          String        @default("Pending")
+  invoiceNumber String    @default("")
+  date          DateTime  @default(now())
+  dueDate       DateTime?
+  status        String    @default("Pending")
   // Financials
-  subtotal        Decimal       @default(0) @db.Decimal(10,2)
-  discount        Decimal       @default(0) @db.Decimal(10,2) // [NEW]
-  taxRate         Decimal       @default(0) @db.Decimal(5,2)  // [NEW]
-  tax             Decimal       @default(0) @db.Decimal(10,2)
-  
-  // GST breakdown
-  gstType         String        @default("INTRA") // INTRA (CGST+SGST) or INTER (IGST)
-  cgst            Decimal       @default(0) @db.Decimal(10,2)
-  sgst            Decimal       @default(0) @db.Decimal(10,2)
-  igst            Decimal       @default(0) @db.Decimal(10,2)
+  subtotal      Decimal   @default(0) @db.Decimal(10, 2)
+  discount      Decimal   @default(0) @db.Decimal(10, 2) // [NEW]
+  taxRate       Decimal   @default(0) @db.Decimal(5, 2) // [NEW]
+  tax           Decimal   @default(0) @db.Decimal(10, 2)
 
-  total           Decimal       @default(0) @db.Decimal(10,2)
-  amountPaid      Decimal       @default(0) @db.Decimal(10,2)
-  balance         Decimal       @default(0) @db.Decimal(10,2)
+  // GST breakdown
+  gstType String  @default("INTRA") // INTRA (CGST+SGST) or INTER (IGST)
+  cgst    Decimal @default(0) @db.Decimal(10, 2)
+  sgst    Decimal @default(0) @db.Decimal(10, 2)
+  igst    Decimal @default(0) @db.Decimal(10, 2)
+
+  total      Decimal @default(0) @db.Decimal(10, 2)
+  amountPaid Decimal @default(0) @db.Decimal(10, 2)
+  balance    Decimal @default(0) @db.Decimal(10, 2)
   // Note
-  note            String        @default("")
+  note       String  @default("")
   // Currency
-  currency        String        @default("INR")
+  currency   String  @default("INR")
   // Template Selection
-  template        String        @default("Standard")
+  template   String  @default("Standard")
 
   // Legacy field kept for backwards compat
-  customer        String        @default("")
-  amount          Decimal       @default(0) @db.Decimal(10,2)
+  customer String  @default("")
+  amount   Decimal @default(0) @db.Decimal(10, 2)
 
-  items           InvoiceItem[]
-  payments        Payment[]
-  
+  items    InvoiceItem[]
+  payments Payment[]
+
   // Relation to Customer model
-  customerId      Int?
-  customerRel     Customer?     @relation(fields: [customerId], references: [id])
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  customerId  Int?
+  customerRel Customer? @relation(fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model InvoiceItem {
@@ -141,8 +140,8 @@ model InvoiceItem {
   description String
   hsnCode     String?
   quantity    Int     @default(1)
-  rate        Decimal @db.Decimal(10,2)
-  amount      Decimal @db.Decimal(10,2)
+  rate        Decimal @db.Decimal(10, 2)
+  amount      Decimal @db.Decimal(10, 2)
   invoiceId   Int
   invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
@@ -167,8 +166,8 @@ model Customer {
 model CompanySettings {
   id        Int      @id @default(autoincrement())
   userId    String   @unique
-  logo      String?  // Base64 encoded logo
-  signature String?  // Base64 encoded signature
+  logo      String? // Base64 encoded logo
+  signature String? // Base64 encoded signature
   name      String?
   email     String?
   phone     String?
@@ -200,5 +199,3 @@ model Payment {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
-
-

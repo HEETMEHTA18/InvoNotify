@@ -19,7 +19,17 @@ interface AnalyticsChartsProps {
     statusData: { name: string; value: number }[];
 }
 
-const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#6366F1"];
+const STATUS_COLORS: Record<string, string> = {
+    "Paid": "#10B981",      // Green
+    "Pending": "#3B82F6",   // Blue
+    "Draft": "#6B7280",     // Gray
+    "Overdue": "#EF4444",   // Red
+    "Cancelled": "#F59E0B", // Orange
+};
+
+const getStatusColor = (status: string, index: number) => {
+    return STATUS_COLORS[status] || `hsl(${index * 60}, 70%, 50%)`;
+};
 
 export function AnalyticsCharts({ revenueData, statusData }: AnalyticsChartsProps) {
     return (
@@ -67,40 +77,57 @@ export function AnalyticsCharts({ revenueData, statusData }: AnalyticsChartsProp
                 <h1 className="text-sm font-semibold text-gray-900 mb-6 uppercase tracking-wide">
                     Invoice Status Distribution
                 </h1>
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={statusData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={70}
-                                outerRadius={90}
-                                paddingAngle={8}
-                                dataKey="value"
-                            >
-                                {statusData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
-                                ))}
-                            </Pie>
-                            <Tooltip
-                                contentStyle={{
-                                    borderRadius: '12px',
-                                    border: 'none',
-                                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                                    padding: '12px'
-                                }}
-                            />
-                            <Legend
-                                verticalAlign="bottom"
-                                align="center"
-                                iconType="circle"
-                                iconSize={8}
-                                wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 500 }}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
+                {statusData && statusData.length > 0 ? (
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={statusData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={70}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    label={({ name, value, percent }) => 
+                                        `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
+                                    }
+                                    labelLine={{ stroke: '#9CA3AF', strokeWidth: 1 }}
+                                >
+                                    {statusData.map((entry, index) => (
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={getStatusColor(entry.name, index)} 
+                                            stroke="white"
+                                            strokeWidth={2}
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                                        padding: '12px',
+                                        fontSize: '14px'
+                                    }}
+                                    formatter={(value, name) => [value, name]}
+                                />
+                                <Legend
+                                    verticalAlign="bottom"
+                                    align="center"
+                                    iconType="circle"
+                                    iconSize={10}
+                                    wrapperStyle={{ paddingTop: '20px', fontSize: '13px', fontWeight: 500 }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    <div className="h-[300px] w-full flex items-center justify-center">
+                        <p className="text-gray-500 text-sm">No invoice data available</p>
+                    </div>
+                )}
             </div>
         </div>
     );
