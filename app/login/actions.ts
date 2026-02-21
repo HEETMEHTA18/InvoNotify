@@ -6,45 +6,47 @@ import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { Prisma } from "@prisma/client"
 
 export async function handleEmailSignIn(formData: FormData) {
-  const email = formData.get("email") as string
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
 
   try {
-    await signIn("nodemailer", {
+    const result = await signIn("credentials", {
       email,
-      callbackUrl: "/dashboard",
+      password,
       redirect: false,
-    })
+      callbackUrl: "/dashboard",
+    });
+    if (result?.error) {
+      redirect("/login?error=signin_failed");
+    }
+    if (result?.url) {
+      redirect(result.url);
+    }
   } catch (error) {
     if (isRedirectError(error)) {
-      throw error
+      throw error;
     }
-
     if (
       error instanceof Prisma.PrismaClientInitializationError ||
       (error instanceof Error &&
         typeof error.message === "string" &&
         error.message.includes("AdapterError"))
     ) {
-      redirect("/login?error=db_unavailable")
+      redirect("/login?error=db_unavailable");
     }
-
-    console.error("Sign in error:", error)
-    redirect("/login?error=signin_failed")
+    console.error("Sign in error:", error);
+    redirect("/login?error=signin_failed");
   }
-
-  redirect("/verify")
 }
 
 export async function handleGoogleSignIn() {
-  console.log("[LoginAction] Initiating Google Sign-In...");
   try {
     await signIn("google", { redirectTo: "/dashboard" })
   } catch (error) {
     if (isRedirectError(error)) {
-      console.log("[LoginAction] Redirecting to Google...");
       throw error
     }
-    console.error("[LoginAction] Google sign in error:", error)
+    console.error("Google sign in error:", error)
     redirect("/login?error=signin_failed")
   }
 }

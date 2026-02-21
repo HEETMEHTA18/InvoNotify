@@ -1,31 +1,40 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { handleEmailSignIn } from "./actions";
-import { auth } from "@/app/utils/auth";
-import { redirect } from "next/navigation";
+import { handleRegister } from "./actions";
 import { SubmitButton } from "../components/SubmitButtom";
 import Link from "next/link";
+import { auth } from "@/app/utils/auth";
+import { redirect } from "next/navigation";
 
-export default async function Login() {
-    const session = await auth();
+export default async function Register() {
+    const session = await auth()
     if (session?.user) {
-        redirect("/dashboard");
+        redirect("/dashboard")
     }
 
     return (
         <div className="flex h-screen w-full items-center justify-center px-4">
             <Card className="w-full max-w-sm">
                 <CardHeader>
-                    <CardTitle className="text-2xl">Login</CardTitle>
+                    <CardTitle className="text-2xl">Create an Account</CardTitle>
                     <CardDescription>
-                        Enter your email and password to login.
+                        Enter your details to register for Invoice Management.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form action={handleEmailSignIn}>
+                    <form action={handleRegister}>
                         <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Full Name</Label>
+                                <Input
+                                    id="name"
+                                    name="name"
+                                    type="text"
+                                    placeholder="John Doe"
+                                    required
+                                />
+                            </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Email</Label>
                                 <Input
@@ -42,17 +51,16 @@ export default async function Login() {
                                     id="password"
                                     name="password"
                                     type="password"
-                                    placeholder="******"
                                     required
                                 />
                             </div>
-                            <SubmitButton text="Login" />
+                            <SubmitButton text="Register" />
                         </div>
                     </form>
                     <div className="mt-4 text-center text-sm">
-                        Don't have an account?{" "}
-                        <Link href="/register" className="underline">
-                            Register
+                        Already have an account?{" "}
+                        <Link href="/login" className="underline">
+                            Login
                         </Link>
                     </div>
                 </CardContent>

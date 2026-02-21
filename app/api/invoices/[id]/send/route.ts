@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/utils/db";
 import { auth } from "@/app/utils/auth";
 import nodemailer from "nodemailer";
-import { MailtrapTransport } from "mailtrap";
 
 // POST: Send invoice PDF to client email
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -33,7 +32,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     let transport;
-
     if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
       transport = nodemailer.createTransport({
         service: "gmail",
@@ -42,15 +40,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           pass: process.env.GMAIL_APP_PASSWORD,
         },
       });
-    } else {
+    } else if (process.env.MAILTRAP_TOKEN) {
       transport = nodemailer.createTransport({
-        ...MailtrapTransport({
-          token: process.env.MAILTRAP_TOKEN!,
-        }),
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
+        host: "send.smtp.mailtrap.io",
+        port: 587,
+        auth: {
+          user: "api",
+          pass: process.env.MAILTRAP_TOKEN,
+        },
       });
+    } else {
+      return NextResponse.json({ error: "No email credentials configured" }, { status: 500 });
     }
 
     // Convert base64 to buffer for attachment
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const result = await transport.sendMail({
       from: {
-        address: (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) ? process.env.GMAIL_USER : (process.env.EMAIL_FROM || "hello@demomailtrap.co"),
+        address: process.env.GMAIL_USER || (process.env.EMAIL_FROM || "hello@example.com"),
         name: invoice.senderName || "Invoice Management",
       },
       to: invoice.clientEmail,

@@ -146,8 +146,9 @@ export async function sendInvoiceReminder({
             },
         });
     } catch (error: any) {
-        if (error.code === 401 || error.message.includes("unauthorized_client")) {
-            throw new Error("Google access expired or credentials changed. Please log out and sign in again with Google.");
+        const msg = error?.message || "";
+        if (error.code === 401 || msg.includes("unauthorized_client") || msg.includes("invalid_grant")) {
+            throw new Error("Google access expired or token revoked. Please sign out and sign in again with Google to refresh your Gmail permissions.");
         }
         throw error;
     }

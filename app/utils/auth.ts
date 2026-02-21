@@ -1,16 +1,16 @@
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import NextAuth from "next-auth"
-import Nodemailer from "next-auth/providers/nodemailer"
 import Google from "next-auth/providers/google"
+import Credentials from "next-auth/providers/credentials"
 import { prisma } from "./db"
-// @ts-expect-error - nodemailer types are installed but not resolving correctly
-import nodemailer from "nodemailer"
-// @ts-expect-error - mailtrap types are included in the package
-import { MailtrapTransport } from "mailtrap"
+import bcrypt from "bcryptjs"
 
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  session: {
+    strategy: "jwt",
+  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -23,54 +23,55 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
       },
     }),
-    Nodemailer({
-      server: {},
-      from: process.env.EMAIL_FROM,
-      async sendVerificationRequest({ identifier: email, url, provider }) {
-        const transport = nodemailer.createTransport(
-          MailtrapTransport({
-            token: process.env.MAILTRAP_TOKEN!,
-          })
-        )
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
 
-        const result = await transport.sendMail({
-          from: {
-            address: provider.from || "hello@demomailtrap.co",
-            name: "Invoice Management",
-          },
-          to: email,
-          subject: "Sign in to Invoice Management",
-          text: `Sign in to Invoice Management\n\nClick the link below to sign in:\n${url}\n\nIf you did not request this email, you can safely ignore it.`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Sign in to Invoice Management</h2>
-              <p>Click the button below to sign in to your account:</p>
-              <a href="${url}" style="display: inline-block; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 5px; margin: 16px 0;">Sign In</a>
-              <p style="color: #666; font-size: 14px;">Or copy and paste this link: ${url}</p>
-              <p style="color: #999; font-size: 12px;">If you did not request this email, you can safely ignore it.</p>
-            </div>
-          `,
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string },
         })
 
-        if ('rejected' in result && Array.isArray(result.rejected) && result.rejected.length) {
-          throw new Error(`Email delivery failed: ${result.rejected.join(", ")}`)
+        if (!user || !user.password) {
+          return null
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password as string,
+          user.password
+        )
+
+        if (!isPasswordValid) {
+          return null
+        }
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
         }
       },
     }),
   ],
   pages: {
     signIn: "/login",
-    verifyRequest: "/verify",
     newUser: "/dashboard",
   },
   callbacks: {
-    async redirect({ baseUrl }) {
-      // Always redirect to dashboard
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      else if (new URL(url).origin === baseUrl) return url
       return `${baseUrl}/dashboard`
     },
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id
+    async session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub
       }
       return session
     },
