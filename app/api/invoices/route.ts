@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/utils/db";
 
 // GET: List all invoices
+import { auth } from "@/app/utils/auth";
+
 export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const invoices = await prisma.invoice.findMany({
+      where: { userId: session.user.id },
       include: { items: true },
       orderBy: { date: "desc" },
     });
@@ -17,6 +24,10 @@ export async function GET() {
 
 // POST: Create a new invoice with line items
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const data = await req.json();
     const {
@@ -72,6 +83,7 @@ export async function POST(req: NextRequest) {
 
     const invoice = await prisma.invoice.create({
       data: {
+        userId: session.user.id,
         senderName: senderName || "",
         senderEmail: senderEmail || "",
         senderAddress: senderAddress || "",

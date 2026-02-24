@@ -131,6 +131,10 @@ model Invoice {
   // Relation to Customer model
   customerId      Int?
   customerRel     Customer?     @relation(fields: [customerId], references: [id])
+
+  // Relation to User (owner)
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
   
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt

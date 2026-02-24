@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/utils/db";
+import { auth } from "@/app/utils/auth";
 
 export async function GET(req: NextRequest) {
+    // Get current user session
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.user.id;
     try {
-        // 1. Fetch KPI aggregations
+        // 1. Fetch KPI aggregations (filtered by userId)
         const aggregations = await prisma.invoice.aggregate({
+            where: { userId: userId },
             _sum: {
                 total: true,
                 amount: true,
@@ -15,7 +23,7 @@ export async function GET(req: NextRequest) {
         });
 
         const paidStats = await prisma.invoice.aggregate({
-            where: { status: "Paid" },
+            where: { status: "Paid", userId: userId },
             _sum: {
                 total: true,
                 amount: true,
@@ -24,7 +32,8 @@ export async function GET(req: NextRequest) {
 
         const pendingStats = await prisma.invoice.aggregate({
             where: {
-                status: { in: ["Pending", "Draft"] }
+                status: { in: ["Pending", "Draft"] },
+                userId: userId
             },
             _sum: {
                 total: true,
@@ -37,7 +46,8 @@ export async function GET(req: NextRequest) {
         const overdueStats = await prisma.invoice.aggregate({
             where: {
                 status: { in: ["Pending", "Draft"] },
-                dueDate: { lt: now }
+                dueDate: { lt: now },
+                userId
             },
             _sum: {
                 total: true,
@@ -66,7 +76,8 @@ export async function GET(req: NextRequest) {
         const invoices = await prisma.invoice.findMany({
             where: {
                 status: { in: ["Pending", "Draft"] },
-                dueDate: { lt: now }
+                dueDate: { lt: now },
+                userId
             },
             select: {
                 id: true,
@@ -128,6 +139,7 @@ export async function GET(req: NextRequest) {
 
         // 5. Recent Activity (Last 5 Invoices)
         const recentActivity = await prisma.invoice.findMany({
+            where: { userId },
             take: 5,
             orderBy: { date: 'desc' },
             select: {
@@ -150,7 +162,8 @@ export async function GET(req: NextRequest) {
             by: ['date', 'status', 'total', 'amount'],
             where: {
                 date: { gte: sixMonthsAgo },
-                status: "Paid"
+                status: "Paid",
+                userId
             }
         });
 
@@ -183,6 +196,7 @@ export async function GET(req: NextRequest) {
         // 7. Chart Data: Status Distribution
         const statusDistributionRaw = await prisma.invoice.groupBy({
             by: ['status'],
+            where: { userId },
             _count: { _all: true }
         });
 
