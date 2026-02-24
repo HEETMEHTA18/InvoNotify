@@ -7,11 +7,26 @@ import Link from "next/link";
 import { auth } from "@/app/utils/auth";
 import { redirect } from "next/navigation";
 
-export default async function Register() {
+export default async function Register({
+    searchParams,
+}: {
+    searchParams: Promise<{ error?: string }>
+}) {
     const session = await auth()
     if (session?.user) {
         redirect("/dashboard")
     }
+
+    const params = await searchParams
+
+    const errorMessages = {
+        missing_fields: "Please fill in all required fields",
+        user_exists: "An account with this email already exists",
+        registration_failed: "Registration failed. Please try again",
+    }
+
+    const error = params?.error
+    const errorMessage = error ? errorMessages[error as keyof typeof errorMessages] : null
 
     return (
         <div className="flex h-screen w-full items-center justify-center px-4">
@@ -23,6 +38,11 @@ export default async function Register() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+                    {errorMessage && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                            {errorMessage}
+                        </div>
+                    )}
                     <form action={handleRegister}>
                         <div className="grid gap-4">
                             <div className="grid gap-2">

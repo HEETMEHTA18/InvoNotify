@@ -7,9 +7,9 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { invoiceId, phoneNumber } = body;
 
-        if (!invoiceId || !phoneNumber) {
+        if (!invoiceId) {
             return NextResponse.json(
-                { error: "Invoice ID and phone number are required" },
+                { error: "Invoice ID is required" },
                 { status: 400 }
             );
         }
@@ -27,6 +27,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
         }
 
+        const targetPhone = String(phoneNumber || invoice.clientPhone || "").trim();
+        if (!targetPhone) {
+            return NextResponse.json({ error: "Client phone is missing" }, { status: 400 });
+        }
+
         // Format amount with currency symbol
         const currency = invoice.currency || "INR";
         const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : currency === "GBP" ? "£" : "₹";
@@ -34,7 +39,7 @@ export async function POST(req: NextRequest) {
 
         const message = `From ${invoice.senderName}: New Invoice #${invoice.invoiceNumber} for ${amount} is ready. Due date: ${new Date(invoice.dueDate || invoice.date).toLocaleDateString()}.`;
 
-        await sendSMS(phoneNumber, message);
+        await sendSMS(targetPhone, message);
 
         return NextResponse.json({ success: true, message: "SMS sent successfully" });
     } catch (error) {

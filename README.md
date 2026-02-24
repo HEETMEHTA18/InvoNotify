@@ -34,3 +34,62 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Automatic Invoice Reminders
+
+This project supports automatic invoice reminder emails, including:
+
+- Before due date: `7`, `3`, `1` day(s), and `on due date`
+- Overdue reminders: every `N` days until invoice is paid
+- Delivery channel: `Email`, `SMS`, or `Both`
+
+### Configure in Invoice Form
+
+In `Create Invoice` and `Edit Invoice`, enable **Automatic Email Reminders** and choose:
+
+- reminder offsets before due date
+- overdue repeat interval (days)
+
+### Backend Endpoint (Cron)
+
+Automatic reminders are sent by:
+
+- `GET /api/reminders/auto`
+- `POST /api/reminders/auto`
+
+The endpoint is protected by:
+
+- authenticated user session, or
+- cron secret header (`Authorization: Bearer <CRON_SECRET>` or `x-cron-secret`)
+
+### Environment Variables
+
+Add one of these for production scheduler auth:
+
+- `CRON_SECRET=your-long-random-secret`
+- or `REMINDER_CRON_SECRET=your-long-random-secret`
+
+Email sending uses existing SMTP/Gmail settings already configured in `.env`.
+
+### Run Migration
+
+After pulling code, run:
+
+```bash
+pnpm prisma migrate deploy
+```
+
+For local development:
+
+```bash
+pnpm prisma migrate dev
+```
+
+### Vercel Cron
+
+`vercel.json` is configured to run reminders daily at `09:00 UTC`:
+
+- `path`: `/api/reminders/auto`
+- `schedule`: `0 9 * * *`
+
+You can adjust this schedule in `vercel.json`.

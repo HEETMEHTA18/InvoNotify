@@ -8,6 +8,8 @@ export interface InvoiceTemplateData {
     senderAddress: string;
     logoUrl?: string | null;
     currency: string;
+    reminderTitle?: string;
+    reminderBadge?: string;
 }
 
 export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
@@ -19,7 +21,9 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
         senderName,
         senderAddress,
         logoUrl,
-        currency
+        currency,
+        reminderTitle,
+        reminderBadge
     } = data;
 
     return `
@@ -28,7 +32,7 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Payment Reminder</title>
+  <title>${reminderTitle || "Payment Reminder"}</title>
   <style>
     body {
       font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -101,16 +105,21 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
     .summary-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       margin-bottom: 12px;
+      gap: 20px;
     }
     .summary-label {
       color: #64748b;
       font-size: 15px;
+      flex-shrink: 0;
     }
     .summary-value {
       font-weight: 600;
       color: #0f172a;
       text-align: right;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .amount-due {
       margin-top: 15px;
@@ -121,6 +130,11 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
       font-size: 24px;
       font-weight: 800;
       color: #ef4444;
+      white-space: nowrap;
+    }
+    .badge-container {
+      text-align: right;
+      margin-top: 10px;
     }
     .action-area {
       text-align: center;
@@ -170,32 +184,36 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
     <div class="container">
       <div class="header">
         ${logoUrl ? `<img src="${logoUrl}" alt="Company Logo">` : ''}
-        <h1>Payment Reminder</h1>
+        <h1>${reminderTitle || "Payment Reminder"}</h1>
       </div>
       <div class="content">
         <p class="greeting">Hello ${clientName},</p>
         <p class="message">
-          We hope you are having a great day. This is a friendly reminder regarding your outstanding invoice. 
+          We hope you are having a great day. This is a friendly reminder regarding your outstanding invoice.
           Please find the specific details below and the attached PDF for your records.
         </p>
-        
+
         <div class="summary-card">
           <div class="summary-title">Invoice Summary</div>
-          <div class="summary-row">
-            <span class="summary-label">Invoice Number</span>
-            <span class="summary-value">#${invoiceNumber}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Due Date</span>
-            <span class="summary-value">${dueDate}</span>
-          </div>
-          <div class="amount-due">
-            <div class="summary-row" style="align-items: center;">
-              <span class="summary-label">Balance Amount</span>
-              <span class="summary-value amount-large">${currency} ${amountDue}</span>
-            </div>
-            <div style="text-align: right;">
-              <span class="badge">OVERDUE</span>
+          <table width="100%" cellpadding="6" cellspacing="0" border="0">
+            <tr>
+              <td style="color: #64748b; font-size: 15px; padding: 6px 0;">Invoice Number</td>
+              <td style="font-weight: 600; color: #0f172a; text-align: right; padding: 6px 0; white-space: nowrap;">#${invoiceNumber}</td>
+            </tr>
+            <tr>
+              <td style="color: #64748b; font-size: 15px; padding: 6px 0;">Due Date</td>
+              <td style="font-weight: 600; color: #0f172a; text-align: right; padding: 6px 0; white-space: nowrap;">${dueDate}</td>
+            </tr>
+          </table>
+          <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #e2e8f0;">
+            <table width="100%" cellpadding="6" cellspacing="0" border="0">
+              <tr>
+                <td style="color: #64748b; font-size: 15px; padding: 6px 0;">Balance Amount</td>
+                <td style="font-size: 24px; font-weight: 800; color: #ef4444; text-align: right; padding: 6px 0; white-space: nowrap;">${currency} ${amountDue}</td>
+              </tr>
+            </table>
+            <div style="text-align: right; margin-top: 10px;">
+              <span class="badge">${reminderBadge || "OVERDUE"}</span>
             </div>
           </div>
         </div>

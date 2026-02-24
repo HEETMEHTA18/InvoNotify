@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Invoice"
+ADD COLUMN "clientPhone" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "reminderChannel" TEXT NOT NULL DEFAULT 'EMAIL';

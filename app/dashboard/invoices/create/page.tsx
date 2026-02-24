@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { REMINDER_CHANNEL_OPTIONS, REMINDER_OFFSET_OPTIONS, type ReminderChannel } from "@/app/utils/invoiceReminders";
 
 type InvoiceItem = {
   description: string;
@@ -114,10 +115,16 @@ export default function CreateInvoicePage() {
 
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [clientAddress, setClientAddress] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [date, setDate] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [autoReminderEnabled, setAutoReminderEnabled] = useState(false);
+  const [reminderOffsets, setReminderOffsets] = useState<number[]>([3, 1, 0]);
+  const [overdueReminderEnabled, setOverdueReminderEnabled] = useState(true);
+  const [overdueReminderEveryDays, setOverdueReminderEveryDays] = useState(3);
+  const [reminderChannel, setReminderChannel] = useState<ReminderChannel>("EMAIL");
 
   const [currency, setCurrency] = useState("INR");
   const [note, setNote] = useState("");
@@ -183,6 +190,7 @@ export default function CreateInvoicePage() {
     const customer = customers.find(c => c.name.toLowerCase() === name.toLowerCase());
     if (customer) {
       if (customer.email) setClientEmail(customer.email);
+      if (customer.phone) setClientPhone(customer.phone);
       if (customer.address) setClientAddress(customer.address);
     }
   }
@@ -210,11 +218,25 @@ export default function CreateInvoicePage() {
     if (data.invoiceNumber) setInvoiceNumber(data.invoiceNumber);
     if (data.date) setDate(data.date);
     if (data.dueDate) setDueDate(data.dueDate);
+    if (typeof data.autoReminderEnabled === "boolean") setAutoReminderEnabled(data.autoReminderEnabled);
+    if (Array.isArray(data.reminderOffsets)) {
+      setReminderOffsets(data.reminderOffsets.map((x: any) => Number(x)).filter((x: number) => Number.isInteger(x)));
+    }
+    if (typeof data.overdueReminderEnabled === "boolean") {
+      setOverdueReminderEnabled(data.overdueReminderEnabled);
+    }
+    if (data.overdueReminderEveryDays) {
+      setOverdueReminderEveryDays(Number(data.overdueReminderEveryDays));
+    }
+    if (data.reminderChannel) {
+      setReminderChannel(String(data.reminderChannel).toUpperCase() as ReminderChannel);
+    }
     if (data.senderName) setSenderName(data.senderName);
     if (data.senderEmail) setSenderEmail(data.senderEmail);
     if (data.senderAddress) setSenderAddress(data.senderAddress);
     if (data.clientName) setClientName(data.clientName);
     if (data.clientEmail) setClientEmail(data.clientEmail);
+    if (data.clientPhone) setClientPhone(data.clientPhone);
     if (data.clientAddress) setClientAddress(data.clientAddress);
     if (data.currency) setCurrency(data.currency);
     if (data.note) setNote(data.note);
@@ -255,11 +277,23 @@ export default function CreateInvoicePage() {
         setInvoiceNumber(data.invoiceNumber);
         setDate(data.date ? new Date(data.date).toISOString().split('T')[0] : "");
         setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split('T')[0] : "");
+        setAutoReminderEnabled(Boolean(data.autoReminderEnabled));
+        setReminderOffsets(
+          Array.isArray(data.reminderOffsets)
+            ? data.reminderOffsets.map((x: any) => Number(x)).filter((x: number) => Number.isInteger(x))
+            : [3, 1, 0]
+        );
+        setOverdueReminderEnabled(Boolean(data.overdueReminderEnabled));
+        setOverdueReminderEveryDays(Number(data.overdueReminderEveryDays || 3));
+        if (data.reminderChannel) {
+          setReminderChannel(String(data.reminderChannel).toUpperCase() as ReminderChannel);
+        }
         setSenderName(data.senderName);
         setSenderEmail(data.senderEmail);
         setSenderAddress(data.senderAddress);
         setClientName(data.clientName);
         setClientEmail(data.clientEmail);
+        setClientPhone(data.clientPhone || "");
         setClientAddress(data.clientAddress);
         setCurrency(data.currency);
         setNote(data.note);
@@ -675,11 +709,30 @@ export default function CreateInvoicePage() {
     doc.save(`${invoiceNumber}.pdf`);
   }
 
+  function toggleReminderOffset(dayOffset: number) {
+    setReminderOffsets((prev) => {
+      if (prev.includes(dayOffset)) return prev.filter((offset) => offset !== dayOffset);
+      return [...prev, dayOffset].sort((a, b) => b - a);
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess(false);
+
+    if (autoReminderEnabled && !dueDate) {
+      setError("Please set a due date to enable automatic reminders.");
+      setLoading(false);
+      return;
+    }
+
+    if (reminderChannel !== "EMAIL" && !clientPhone.trim()) {
+      setError("Please provide client phone number for SMS or Both reminder channel.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const url = isEditing ? `/api/invoices/${invoiceId}` : "/api/invoices";
@@ -694,6 +747,7 @@ export default function CreateInvoicePage() {
           senderAddress,
           clientName,
           clientEmail,
+          clientPhone,
           clientAddress,
           invoiceNumber,
           date,
@@ -709,6 +763,11 @@ export default function CreateInvoicePage() {
           template,
           subtotal,
           total,
+          autoReminderEnabled,
+          reminderOffsets,
+          overdueReminderEnabled,
+          overdueReminderEveryDays,
+          reminderChannel,
         }),
       });
 
@@ -1201,7 +1260,18 @@ export default function CreateInvoicePage() {
                       onChange={(e) => setClientEmail(e.target.value)}
                       placeholder="client@email.com"
                       className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                      required
+                      required={reminderChannel !== "SMS"}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Client Phone</label>
+                    <input
+                      type="tel"
+                      value={clientPhone}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                      placeholder="+91XXXXXXXXXX"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      required={reminderChannel !== "EMAIL"}
                     />
                   </div>
                   <div>
@@ -1247,6 +1317,100 @@ export default function CreateInvoicePage() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Automatic Reminders */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Automatic Reminders</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Send reminders before due date and continue after overdue until invoice is paid.
+                </p>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoReminderEnabled}
+                  onChange={(e) => setAutoReminderEnabled(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Enable
+              </label>
+            </div>
+
+            <div className="mt-5">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Reminder Channel
+              </label>
+              <select
+                value={reminderChannel}
+                onChange={(e) => setReminderChannel(e.target.value as ReminderChannel)}
+                className="w-full sm:w-56 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              >
+                {REMINDER_CHANNEL_OPTIONS.map((channel) => (
+                  <option key={channel} value={channel}>
+                    {channel === "EMAIL" ? "Email" : channel === "SMS" ? "SMS" : "Both (Email + SMS)"}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Used for both manual reminder action and automatic reminders.
+              </p>
+            </div>
+
+            {autoReminderEnabled && (
+              <div className="mt-5 space-y-5">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Before Due Date
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {REMINDER_OFFSET_OPTIONS.map((offset) => (
+                      <button
+                        key={offset}
+                        type="button"
+                        onClick={() => toggleReminderOffset(offset)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          reminderOffsets.includes(offset)
+                            ? "bg-gray-900 text-white border-gray-900"
+                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {offset === 0 ? "On due date" : `${offset} day${offset > 1 ? "s" : ""} before`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={overdueReminderEnabled}
+                      onChange={(e) => setOverdueReminderEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Continue overdue reminders
+                  </label>
+
+                  {overdueReminderEnabled && (
+                    <div className="inline-flex items-center gap-2 text-sm text-gray-700">
+                      Every
+                      <input
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={overdueReminderEveryDays}
+                        onChange={(e) => setOverdueReminderEveryDays(Number(e.target.value) || 1)}
+                        className="w-16 border border-gray-300 rounded-md px-2 py-1 text-sm text-right"
+                      />
+                      day(s) after due date
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Line Items */}
@@ -1487,15 +1651,15 @@ export default function CreateInvoicePage() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating...
+                  {isEditing ? "Updating..." : "Creating..."}
                 </span>
               ) : success ? (
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" />
-                  Created
+                  {isEditing ? "Updated" : "Created"}
                 </span>
               ) : (
-                "Create Invoice"
+                isEditing ? "Update Invoice" : "Create Invoice"
               )}
             </Button>
           </div>

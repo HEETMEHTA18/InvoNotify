@@ -1,13 +1,89 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/utils/db";
+import { auth } from "@/app/utils/auth";
+import { normalizeReminderSettings, normalizeReminderChannel } from "@/app/utils/invoiceReminders";
+
+function isReminderSchemaMismatch(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("autoReminderEnabled") ||
+    message.includes("ownerUserId") ||
+    message.includes("clientPhone") ||
+    message.includes("reminderOffsets") ||
+    message.includes("reminderChannel") ||
+    message.includes("overdueReminderEnabled") ||
+    message.includes("overdueReminderEveryDays") ||
+    message.includes("column does not exist") ||
+    message.includes("Unknown arg") ||
+    message.includes("Unknown field")
+  );
+}
 
 // GET: List all invoices
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const invoices = await prisma.invoice.findMany({
-      include: { items: true },
-      orderBy: { date: "desc" },
-    });
+    const withItems = req.nextUrl.searchParams.get("withItems") === "true";
+
+    const baseSelect = {
+      id: true,
+      invoiceNumber: true,
+      clientName: true,
+      clientEmail: true,
+      clientAddress: true,
+      senderName: true,
+      senderEmail: true,
+      senderAddress: true,
+      total: true,
+      subtotal: true,
+      status: true,
+      date: true,
+      dueDate: true,
+      currency: true,
+      note: true,
+      customer: true,
+      amount: true,
+      amountPaid: true,
+      balance: true,
+    };
+
+    const invoices = withItems
+      ? await prisma.invoice.findMany({
+        include: {
+          items: {
+            select: {
+              id: true,
+              description: true,
+              hsnCode: true,
+              quantity: true,
+              rate: true,
+              amount: true,
+            },
+          },
+        },
+        orderBy: { date: "desc" },
+      })
+      : await (async () => {
+        try {
+          return await prisma.invoice.findMany({
+            select: {
+              ...baseSelect,
+              clientPhone: true,
+              autoReminderEnabled: true,
+              reminderOffsets: true,
+              reminderChannel: true,
+              overdueReminderEnabled: true,
+              overdueReminderEveryDays: true,
+            },
+            orderBy: { date: "desc" },
+          });
+        } catch (error) {
+          if (!isReminderSchemaMismatch(error)) throw error;
+          return prisma.invoice.findMany({
+            select: baseSelect,
+            orderBy: { date: "desc" },
+          });
+        }
+      })();
     return NextResponse.json(invoices);
   } catch (error) {
     console.error("Failed to fetch invoices:", error);
@@ -18,6 +94,7 @@ export async function GET() {
 // POST: Create a new invoice with line items
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
     const data = await req.json();
     const {
       senderName,
@@ -25,6 +102,7 @@ export async function POST(req: NextRequest) {
       senderAddress,
       clientName,
       clientEmail,
+      clientPhone,
       clientAddress,
       invoiceNumber,
       date,
@@ -69,50 +147,90 @@ export async function POST(req: NextRequest) {
 
     const total = taxableAmount + totalTax;
     const template = data.template || "Standard";
+    const reminderSettings = normalizeReminderSettings({
+      autoReminderEnabled: data.autoReminderEnabled,
+      reminderOffsets: data.reminderOffsets,
+      overdueReminderEnabled: data.overdueReminderEnabled,
+      overdueReminderEveryDays: data.overdueReminderEveryDays,
+      reminderChannel: data.reminderChannel,
+      dueDate,
+    });
+    const reminderChannel = normalizeReminderChannel(data.reminderChannel);
 
-    const invoice = await prisma.invoice.create({
-      data: {
-        senderName: senderName || "",
-        senderEmail: senderEmail || "",
-        senderAddress: senderAddress || "",
-        clientName,
-        clientEmail,
-        clientAddress: clientAddress || "",
-        invoiceNumber: invoiceNumber || `INV-${Date.now()}`,
-        date: new Date(date),
-        dueDate: dueDate ? new Date(dueDate) : null,
-        status: status || "Pending",
-        currency: currency || "INR",
-        template,
-        note: note || "",
-        subtotal,
-        discount,
-        taxRate,
-        tax: totalTax,
-        gstType,
-        cgst,
-        sgst,
-        igst,
-        total,
-        amountPaid: 0,
-        balance: total,
-        // Legacy
-        customer: clientName,
-        amount: total,
-        items: {
-          create: items.map(
-            (item: { description: string; hsnCode?: string; quantity: number; rate: number; amount: number }) => ({
-              description: item.description,
-              hsnCode: item.hsnCode || null,
-              quantity: Number(item.quantity),
-              rate: Number(item.rate),
-              amount: Number(item.amount),
-            })
-          ),
-        },
+    if (reminderChannel !== "EMAIL" && !String(clientPhone || "").trim()) {
+      return NextResponse.json(
+        { error: "Client phone is required for SMS or Both reminder channel" },
+        { status: 400 }
+      );
+    }
+
+    const baseCreateData = {
+      senderName: senderName || "",
+      senderEmail: senderEmail || "",
+      senderAddress: senderAddress || "",
+      clientName,
+      clientEmail,
+      clientAddress: clientAddress || "",
+      invoiceNumber: invoiceNumber || `INV-${Date.now()}`,
+      date: new Date(date),
+      dueDate: dueDate ? new Date(dueDate) : null,
+      status: status || "Pending",
+      currency: currency || "INR",
+      template,
+      note: note || "",
+      subtotal,
+      discount,
+      taxRate,
+      tax: totalTax,
+      gstType,
+      cgst,
+      sgst,
+      igst,
+      total,
+      amountPaid: 0,
+      balance: total,
+      // Legacy
+      customer: clientName,
+      amount: total,
+      items: {
+        create: items.map(
+          (item: { description: string; hsnCode?: string; quantity: number; rate: number; amount: number }) => ({
+            description: item.description,
+            hsnCode: item.hsnCode || null,
+            quantity: Number(item.quantity),
+            rate: Number(item.rate),
+            amount: Number(item.amount),
+          })
+        ),
       },
-      include: { items: true },
-    } as any);
+    };
+
+    const reminderCreateData = {
+      ownerUserId: session?.user?.id || null,
+      clientPhone: clientPhone || "",
+      autoReminderEnabled: reminderSettings.autoReminderEnabled,
+      reminderOffsets: reminderSettings.reminderOffsets,
+      reminderChannel: reminderSettings.reminderChannel,
+      overdueReminderEnabled: reminderSettings.overdueReminderEnabled,
+      overdueReminderEveryDays: reminderSettings.overdueReminderEveryDays,
+    };
+
+    let invoice;
+    try {
+      invoice = await prisma.invoice.create({
+        data: {
+          ...baseCreateData,
+          ...reminderCreateData,
+        },
+        include: { items: true },
+      });
+    } catch (error) {
+      if (!isReminderSchemaMismatch(error)) throw error;
+      invoice = await prisma.invoice.create({
+        data: baseCreateData,
+        include: { items: true },
+      });
+    }
 
     return NextResponse.json(invoice, { status: 201 });
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { InvoiceList } from "./InvoiceList";
 import { PaymentDialog } from "./PaymentDialog";
@@ -43,7 +43,9 @@ type Invoice = {
   note: string;
   customer: string;
   amount: string;
-  items: InvoiceItem[];
+  amountPaid?: string;
+  balance?: string;
+  items?: InvoiceItem[];
 };
 
 export default function InvoicesPage() {
@@ -64,7 +66,7 @@ export default function InvoicesPage() {
     setIsLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/invoices");
+      const res = await fetch("/api/invoices?withItems=false");
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setInvoices(data);
@@ -173,14 +175,17 @@ export default function InvoicesPage() {
     setFilteredInvoices(result);
   }, [search, statusFilter, invoices]);
 
-  // Stats
-  const now = new Date();
-  const totalRevenue = invoices.reduce((s, inv) => s + parseFloat(inv.total || inv.amount || "0"), 0);
-  const paidCount = invoices.filter((inv) => inv.status === "Paid").length;
-  const pendingCount = invoices.filter((inv) => inv.status === "Pending").length;
-  const overdueCount = invoices.filter((inv) =>
-    inv.status === "Pending" && inv.dueDate && new Date(inv.dueDate) < now
-  ).length;
+  const { totalRevenue, paidCount, overdueCount } = useMemo(() => {
+    const currentDate = new Date();
+
+    return {
+      totalRevenue: invoices.reduce((s, inv) => s + parseFloat(inv.total || inv.amount || "0"), 0),
+      paidCount: invoices.filter((inv) => inv.status === "Paid").length,
+      overdueCount: invoices.filter((inv) =>
+        inv.status === "Pending" && inv.dueDate && new Date(inv.dueDate) < currentDate
+      ).length,
+    };
+  }, [invoices]);
 
   async function handleDelete(inv: Invoice) {
     if (!confirm(`Delete invoice ${inv.invoiceNumber || `#${inv.id}`}?`)) return;
@@ -221,19 +226,48 @@ export default function InvoicesPage() {
 
   const [settings, setSettings] = useState<{ logo: string | null; signature: string | null } | undefined>();
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((data) => setSettings(data))
-      .catch(() => console.error("Failed to load settings"));
-  }, []);
+  async function getSettingsForPdf() {
+    if (settings !== undefined) return settings;
 
-  function handleDownload(inv: Invoice) {
     try {
-      console.log("Downloading invoice:", inv);
-      generateInvoicePDF(inv, settings);
+      const res = await fetch("/api/settings");
+      if (!res.ok) throw new Error("Failed to fetch settings");
+
+      const data = await res.json();
+      setSettings(data);
+      return data;
     } catch (e) {
-      console.error("PDF Generation Error:", e);
+      console.error("Settings load failed:", e);
+      return undefined;
+    }
+  }
+
+  async function fetchInvoiceDetailsForDownload(invoiceId: number) {
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}`);
+      if (!res.ok) throw new Error("Failed to fetch invoice details");
+      return await res.json();
+    } catch (e) {
+      console.error("Invoice details load failed:", e);
+      return null;
+    }
+  }
+
+  async function handleDownload(inv: Invoice) {
+    try {
+      const [invoiceData, settingsData] = await Promise.all([
+        inv.items?.length ? Promise.resolve(inv) : fetchInvoiceDetailsForDownload(inv.id),
+        getSettingsForPdf(),
+      ]);
+
+      if (!invoiceData) {
+        alert("Failed to load invoice details");
+        return;
+      }
+
+      generateInvoicePDF(invoiceData, settingsData);
+    } catch (e) {
+      console.error("PDF generation error:", e);
       alert("Failed to generate PDF");
     }
   }
