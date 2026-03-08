@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/utils/db";
+import { prisma } from "@/lib/db";
 
 // GET: Single product
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -81,7 +81,9 @@ export function AnalyticsCharts({
     onRevenueRangeChange,
     isRevenueLoading = false,
 }: AnalyticsChartsProps) {
-    const totalStatusCount = statusData.reduce((sum, row) => sum + Number(row.value || 0), 0);
+    const totalStatusCount = Array.isArray(statusData)
+        ? statusData.reduce((sum, row) => sum + Number(row.value || 0), 0)
+        : 0;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -98,8 +100,8 @@ export function AnalyticsCharts({
                                 type="button"
                                 onClick={() => onRevenueRangeChange(option.value)}
                                 className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${revenueRange === option.value
-                                        ? "bg-gray-900 text-white"
-                                        : "text-gray-600 hover:bg-white hover:text-gray-900"
+                                    ? "bg-gray-900 text-white"
+                                    : "text-gray-600 hover:bg-white hover:text-gray-900"
                                     }`}
                             >
                                 {option.label}

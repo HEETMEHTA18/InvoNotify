@@ -1,44 +1,45 @@
-const https = require('https');
-require('dotenv').config();
+// Native env loading via --env-file flag used in launcher
 
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 const CRON_SECRET = process.env.CRON_SECRET || process.env.REMINDER_CRON_SECRET;
 
 if (!CRON_SECRET) {
-    console.error('CRON_SECRET is not defined in .env');
+    console.error('CRON_SECRET (or REMINDER_CRON_SECRET) is not defined in .env');
     process.exit(1);
 }
 
-const url = new URL('/api/reminders/auto', SITE_URL);
+async function triggerReminders() {
+    const url = `${SITE_URL.replace(/\/$/, '')}/api/reminders/auto`;
+    console.log(`Triggering auto reminders at ${url}...`);
 
-const options = {
-    method: 'POST',
-    headers: {
-        'Authorization': `Bearer ${CRON_SECRET}`,
-        'Content-Type': 'application/json',
-    },
-};
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${CRON_SECRET}`,
+                'Content-Type': 'application/json',
+                'x-cron-secret': CRON_SECRET // Supporting both header formats
+            },
+        });
 
-console.log(`Triggering auto reminders at ${url.toString()}...`);
+        const status = response.status;
+        const text = await response.text();
 
-const req = https.request(url, options, (res) => {
-    let data = '';
-    res.on('data', (chunk) => {
-        data += chunk;
-    });
-    res.on('end', () => {
-        console.log(`Status: ${res.statusCode}`);
+        console.log(`Status: ${status}`);
         try {
-            const result = JSON.parse(data);
+            const result = JSON.parse(text);
             console.log('Result:', JSON.stringify(result, null, 2));
         } catch (e) {
-            console.log('Raw Response:', data);
+            console.log('Raw Response:', text);
         }
-    });
-});
 
-req.on('error', (error) => {
-    console.error('Error triggering reminders:', error);
-});
+        if (!response.ok) {
+            process.exit(1);
+        }
+    } catch (error) {
+        console.error('Error triggering reminders:', error);
+        process.exit(1);
+    }
+}
 
-req.end();
+triggerReminders();

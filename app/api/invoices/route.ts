@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/utils/db";
-import { auth } from "@/app/utils/auth";
-import { normalizeReminderSettings, normalizeReminderChannel } from "@/app/utils/invoiceReminders";
+import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
+import { normalizeReminderSettings, normalizeReminderChannel } from "@/lib/reminders";
 
 function isReminderSchemaMismatch(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -108,6 +108,11 @@ export async function POST(req: NextRequest) {
       currency,
       note,
       items, // Array of { description, quantity, rate, amount }
+      autoReminderEnabled,
+      reminderOffsets,
+      overdueReminderEnabled,
+      overdueReminderEveryDays,
+      reminderChannel,
     } = data;
 
     if (!clientName || !clientEmail || !date || !items || items.length === 0) {
@@ -145,6 +150,15 @@ export async function POST(req: NextRequest) {
     const total = taxableAmount + totalTax;
     const template = data.template || "Standard";
 
+    const reminderSettings = normalizeReminderSettings({
+      autoReminderEnabled: data.autoReminderEnabled,
+      reminderOffsets: data.reminderOffsets,
+      reminderChannel: data.reminderChannel,
+      overdueReminderEnabled: data.overdueReminderEnabled,
+      overdueReminderEveryDays: data.overdueReminderEveryDays,
+      dueDate: dueDate ? new Date(dueDate) : null,
+    });
+
     const invoice = await prisma.invoice.create({
       data: {
         ownerUserId: session?.user?.id ?? "",
@@ -172,6 +186,13 @@ export async function POST(req: NextRequest) {
         total,
         amountPaid: 0,
         balance: total,
+        // Reminder Settings
+        autoReminderEnabled: reminderSettings.autoReminderEnabled,
+        reminderOffsets: reminderSettings.reminderOffsets,
+        reminderChannel: reminderSettings.reminderChannel,
+        overdueReminderEnabled: reminderSettings.overdueReminderEnabled,
+        overdueReminderEveryDays: reminderSettings.overdueReminderEveryDays,
+        clientPhone: clientPhone || null,
         // Legacy
         customer: clientName,
         amount: total,
@@ -189,6 +210,57 @@ export async function POST(req: NextRequest) {
       },
       include: { items: true },
     });
+
+    // Immediate reminder check
+    if (invoice.autoReminderEnabled && invoice.dueDate && invoice.status !== "Paid") {
+      const { getReminderMatchForDate } = await import("@/lib/reminders");
+      const { sendInvoiceReminderById } = await import("@/lib/mail-service");
+
+      const match = getReminderMatchForDate({
+        dueDate: invoice.dueDate,
+        reminderOffsets: (invoice.reminderOffsets as number[]) || [],
+        overdueReminderEnabled: invoice.overdueReminderEnabled,
+        overdueReminderEveryDays: invoice.overdueReminderEveryDays,
+      });
+
+      if (match) {
+        // We don't await this to keep the response fast, or we could if reliability is key.
+        // Given the user request, let's await it so THEY see if it works.
+        try {
+          await sendInvoiceReminderById({
+            invoiceId: invoice.id,
+            reminderType: match.reminderType,
+            daysUntilDue: match.daysUntilDue,
+            daysOverdue: match.daysOverdue,
+          });
+
+          // Log it so sweep doesn't resend
+          await prisma.invoiceReminderLog.create({
+            data: {
+              invoiceId: invoice.id,
+              reminderKey: match.reminderKey,
+              reminderType: match.reminderType,
+              targetDate: match.targetDate,
+            },
+          });
+        } catch (e) {
+          console.error("Failed to send immediate invoice reminder:", e);
+        }
+      }
+    }
+
+    // Auto-track firstInvoiceAt on the linked Customer record (used for VIP/long-term detection)
+    if (invoice.customerId) {
+      await prisma.customer.updateMany({
+        where: {
+          id: invoice.customerId,
+          firstInvoiceAt: null, // Only set if not already set
+        },
+        data: {
+          firstInvoiceAt: new Date(date),
+        },
+      });
+    }
 
     return NextResponse.json(invoice, { status: 201 });
   } catch (error) {

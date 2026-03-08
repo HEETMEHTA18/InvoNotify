@@ -1,3 +1,3 @@
-import { handlers } from "@/app/utils/auth" // Relative path
+import { handlers } from "@/lib/auth" // Relative path
 // ...existing code...created
 export const { GET, POST } = handlers

@@ -1,35 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/app/utils/db";
-import { auth } from "@/app/utils/auth";
-
-type RevenueBucketRow = {
-    bucket_start: Date;
-    revenue: Prisma.Decimal | number | string | null;
-};
-
-type HighRiskGroupRow = {
-    clientName: string | null;
-    clientEmail: string | null;
-    invoice_count: number | bigint;
-    total_overdue: Prisma.Decimal | number | string | null;
-};
-
-function numericValue(
-    value: Prisma.Decimal | number | string | null | undefined
-): number {
-    return Number(value ?? 0);
-}
-
-function invoiceAmount(
-    total: Prisma.Decimal | number | string | null | undefined,
-    amount: Prisma.Decimal | number | string | null | undefined
-): number {
+// Helper to get a numeric invoice amount
+function invoiceAmount(total: Prisma.Decimal | number | string | null | undefined, amount: Prisma.Decimal | number | string | null | undefined): number {
+    const numericValue = (value: Prisma.Decimal | number | string | null | undefined) => Number(value ?? 0);
     const totalValue = numericValue(total);
     if (totalValue !== 0) return totalValue;
     return numericValue(amount);
 }
-
+// Helper function for revenue buckets
 async function getRevenueBuckets(
     bucket: "hour" | "day" | "month",
     startDate: Date,
@@ -60,9 +36,24 @@ async function getRevenueBuckets(
         ORDER BY bucket_start ASC
     `;
 }
+import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
+
+type RevenueBucketRow = {
+    bucket_start: Date;
+    revenue: Prisma.Decimal | number | string | null;
+};
+
+type HighRiskGroupRow = {
+    clientName: string | null;
+    clientEmail: string | null;
+    invoice_count: number | bigint;
+    total_overdue: Prisma.Decimal | number | string | null;
+};
 
 export async function GET(req: NextRequest) {
-    // Get current user session
     const session = await auth();
     if (!session?.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -161,8 +152,35 @@ export async function GET(req: NextRequest) {
             `,
         ]);
 
+        // Calculate status distribution using pre-fetched data
+        const statusDistributionMap = new Map<string, number>();
+        ["Paid", "Pending", "Draft", "Overdue", "Cancelled"].forEach(s => statusDistributionMap.set(s, 0));
+
+        let overdueTotalCount = 0;
+        for (const row of overdueStatusCounts) {
+            overdueTotalCount += row._count._all;
+        }
+        statusDistributionMap.set("Overdue", overdueTotalCount);
+
+        for (const row of rawStatusCounts) {
+            const count = row._count._all;
+            const status = row.status;
+
+            if (status === "Paid" || status === "Cancelled") {
+                statusDistributionMap.set(status, count);
+            } else if (status === "Pending" || status === "Draft") {
+                // Subtract overdue count from Pending/Draft to avoid double counting
+                const overdueForStatus = (overdueStatusCounts as any[]).find((osc: any) => osc.status === status)?._count._all ?? 0;
+                statusDistributionMap.set(status, Math.max(0, count - overdueForStatus));
+            }
+        }
+
+        const statusDistribution = Array.from(statusDistributionMap.entries())
+            .filter(([_, value]) => value > 0)
+            .map(([name, value]) => ({ name, value }));
+
         const highRiskCustomers = await Promise.all(
-            highRiskGroups.map(async (group) => {
+            (highRiskGroups as HighRiskGroupRow[]).map(async (group) => {
                 const latestInvoice = await prisma.invoice.findFirst({
                     where: {
                         status: { in: ["Pending", "Draft"] },
@@ -178,7 +196,7 @@ export async function GET(req: NextRequest) {
                 return {
                     name: group.clientName || "Unknown",
                     email: group.clientEmail || "",
-                    totalOverdue: numericValue(group.total_overdue),
+                    totalOverdue: Number(group.total_overdue ?? 0),
                     count: Number(group.invoice_count),
                     lastInvoiceDate: latestInvoice?.date ?? null,
                     lastInvoiceId: latestInvoice?.id ?? null,
@@ -186,7 +204,7 @@ export async function GET(req: NextRequest) {
             })
         );
 
-        const recentActivity = recentInvoicesRaw.map((inv) => {
+        const recentActivity = (recentInvoicesRaw as any[]).map((inv: any) => {
             let status = inv.status;
             if (status !== "Paid" && inv.dueDate && new Date(inv.dueDate) < now) {
                 status = "Overdue";
@@ -203,29 +221,11 @@ export async function GET(req: NextRequest) {
             };
         });
 
-        const statusMap = new Map<string, number>();
-        for (const row of rawStatusCounts) {
-            statusMap.set(row.status, row._count?._all ?? 0);
-        }
 
-        let overdueTotal = 0;
-        for (const row of overdueStatusCounts) {
-            const current = statusMap.get(row.status) ?? 0;
-            statusMap.set(row.status, Math.max(0, current - (row._count?._all ?? 0)));
-            overdueTotal += row._count?._all ?? 0;
-        }
-        if (overdueTotal > 0) {
-            statusMap.set("Overdue", overdueTotal);
-        }
-
-        const statusDistribution = Array.from(statusMap.entries())
-            .filter(([, value]) => value > 0)
-            .map(([name, value]) => ({ name, value }));
-
+        // Revenue chart logic
         const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const revenueMap = new Map<string, number>();
         const formatDayLabel = (date: Date) => `${months[date.getMonth()]} ${date.getDate()}`;
-
         let revenueRows: RevenueBucketRow[] = [];
         if (revenueRange === "day") {
             for (let hour = 0; hour < 24; hour += 1) {

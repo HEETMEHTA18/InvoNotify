@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { InvoiceList } from "./InvoiceList";
 import { PaymentDialog } from "./PaymentDialog";
-import { generateInvoicePDF } from "@/app/utils/pdfGenerator";
+import { generateInvoicePDF } from "@/lib/pdf";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -15,6 +15,7 @@ import {
   Filter,
   Banknote,
   AlertTriangle,
+  Phone,
 } from "lucide-react";
 
 type InvoiceItem = {
@@ -268,6 +269,34 @@ export default function InvoicesPage() {
     }
   }
 
+  async function handleVoiceCall(inv: Invoice) {
+    if (!inv.clientPhone?.trim()) {
+      alert("No phone number on this invoice.\nPlease edit the invoice and add the client's phone number first.");
+      return;
+    }
+    if (inv.status === "Paid") {
+      alert("This invoice is already paid — no reminder needed!");
+      return;
+    }
+    if (!confirm(`Call ${inv.clientName} at ${inv.clientPhone} with a voice payment reminder?`)) return;
+
+    try {
+      const res = await fetch("/api/reminders/voice-call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: inv.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ Voice call initiated!\nProvider: ${data.provider}\nCall ID: ${data.callId}\n\nThe customer will receive a call from Riley (AI agent) shortly.`);
+      } else {
+        alert("❌ Voice call failed: " + (data.error || "Unknown error"));
+      }
+    } catch {
+      alert("Error initiating voice call");
+    }
+  }
+
   const [settings, setSettings] = useState<{ logo: string | null; signature: string | null } | undefined>();
 
   async function getSettingsForPdf() {
@@ -513,6 +542,7 @@ export default function InvoicesPage() {
               onMarkPaid={handleMarkPaid}
               onReminder={handleReminder}
               onSendSms={handleSendSms}
+              onVoiceCall={handleVoiceCall}
               onDownload={handleDownload}
               onRecordPayment={handleRecordPayment}
             />

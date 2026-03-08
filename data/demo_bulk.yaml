@@ -1,0 +1,1110 @@
+customers:
+- name: Raj Hardware Store
+  group: Sundry Debtors
+  state: Gujarat
+  gstin: 24AAACR1111A1Z1
+  phone: '9876543210'
+- name: Shree Tools Mart
+  group: Sundry Debtors
+  state: Maharashtra
+  gstin: 27BBBST2222B1Z2
+  phone: '9123456789'
+- name: Metro Hardware
+  group: Sundry Debtors
+  state: Rajasthan
+  gstin: ''
+  phone: '9000000000'
+- name: Elite Construction
+  group: Sundry Debtors
+  state: Delhi
+  gstin: 07AAACE1234L1Z1
+  phone: '9988776655'
+- name: Global Builders
+  group: Sundry Debtors
+  state: Karnataka
+  gstin: 29BBBCG4321K1Z2
+  phone: '8877665544'
+stock_items:
+- name: Hammer
+  rate: 250
+- name: Screwdriver Set
+  rate: 400
+- name: Drill Machine
+  rate: 2500
+- name: PVC Pipe 1 inch
+  rate: 120
+- name: Cement Bag
+  rate: 350
+- name: Paint Bucket 20L
+  rate: 4500
+- name: Steel Rod 10mm
+  rate: 650
+- name: Door Handle
+  rate: 150
+transactions:
+- voucher_type: Sales
+  date: 06-May-2025
+  due_date: 21-May-2025
+  invoice_no: SAL-101
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Hammer
+    quantity: 11
+    rate: 250
+    amount: 2750
+  - item_name: PVC Pipe 1 inch
+    quantity: 19
+    rate: 120
+    amount: 2280
+  - item_name: Drill Machine
+    quantity: 20
+    rate: 2500
+    amount: 50000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 4952.7
+  - ledger_name: Output SGST
+    amount: 4952.7
+  narration: Bulk import transaction 1
+- voucher_type: Sales
+  date: 27-Apr-2025
+  due_date: 12-May-2025
+  invoice_no: SAL-102
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Hammer
+    quantity: 7
+    rate: 250
+    amount: 1750
+  - item_name: Cement Bag
+    quantity: 20
+    rate: 350
+    amount: 7000
+  - item_name: Screwdriver Set
+    quantity: 17
+    rate: 400
+    amount: 6800
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1399.5
+  - ledger_name: Output SGST
+    amount: 1399.5
+  narration: Bulk import transaction 2
+- voucher_type: Sales
+  date: 29-Apr-2025
+  due_date: 14-May-2025
+  invoice_no: SAL-103
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Paint Bucket 20L
+    quantity: 20
+    rate: 4500
+    amount: 90000
+  - item_name: Steel Rod 10mm
+    quantity: 5
+    rate: 650
+    amount: 3250
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 8392.5
+  - ledger_name: Output SGST
+    amount: 8392.5
+  narration: Bulk import transaction 3
+- voucher_type: Sales
+  date: 14-May-2025
+  due_date: 29-May-2025
+  invoice_no: SAL-104
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Steel Rod 10mm
+    quantity: 15
+    rate: 650
+    amount: 9750
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 877.5
+  - ledger_name: Output SGST
+    amount: 877.5
+  narration: Bulk import transaction 4
+- voucher_type: Sales
+  date: 21-Apr-2025
+  due_date: 06-May-2025
+  invoice_no: SAL-105
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Hammer
+    quantity: 3
+    rate: 250
+    amount: 750
+  - item_name: Door Handle
+    quantity: 20
+    rate: 150
+    amount: 3000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 337.5
+  - ledger_name: Output SGST
+    amount: 337.5
+  narration: Bulk import transaction 5
+- voucher_type: Sales
+  date: 30-May-2025
+  due_date: 14-Jun-2025
+  invoice_no: SAL-106
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Drill Machine
+    quantity: 4
+    rate: 2500
+    amount: 10000
+  - item_name: Door Handle
+    quantity: 20
+    rate: 150
+    amount: 3000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1170.0
+  - ledger_name: Output SGST
+    amount: 1170.0
+  narration: Bulk import transaction 6
+- voucher_type: Sales
+  date: 22-May-2025
+  due_date: 06-Jun-2025
+  invoice_no: SAL-107
+  party_ledger: Global Builders
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Cement Bag
+    quantity: 13
+    rate: 350
+    amount: 4550
+  - item_name: PVC Pipe 1 inch
+    quantity: 15
+    rate: 120
+    amount: 1800
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 571.5
+  - ledger_name: Output SGST
+    amount: 571.5
+  narration: Bulk import transaction 7
+- voucher_type: Sales
+  date: 01-May-2025
+  due_date: 16-May-2025
+  invoice_no: SAL-108
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Screwdriver Set
+    quantity: 5
+    rate: 400
+    amount: 2000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 180.0
+  - ledger_name: Output SGST
+    amount: 180.0
+  narration: Bulk import transaction 8
+- voucher_type: Sales
+  date: 19-May-2025
+  due_date: 03-Jun-2025
+  invoice_no: SAL-109
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Screwdriver Set
+    quantity: 8
+    rate: 400
+    amount: 3200
+  - item_name: Door Handle
+    quantity: 12
+    rate: 150
+    amount: 1800
+  - item_name: Cement Bag
+    quantity: 8
+    rate: 350
+    amount: 2800
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 702.0
+  - ledger_name: Output SGST
+    amount: 702.0
+  narration: Bulk import transaction 9
+- voucher_type: Sales
+  date: 10-Apr-2025
+  due_date: 25-Apr-2025
+  invoice_no: SAL-110
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Hammer
+    quantity: 8
+    rate: 250
+    amount: 2000
+  - item_name: Paint Bucket 20L
+    quantity: 20
+    rate: 4500
+    amount: 90000
+  - item_name: Drill Machine
+    quantity: 2
+    rate: 2500
+    amount: 5000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 8730.0
+  - ledger_name: Output SGST
+    amount: 8730.0
+  narration: Bulk import transaction 10
+- voucher_type: Sales
+  date: 20-May-2025
+  due_date: 04-Jun-2025
+  invoice_no: SAL-111
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Cement Bag
+    quantity: 5
+    rate: 350
+    amount: 1750
+  - item_name: Steel Rod 10mm
+    quantity: 15
+    rate: 650
+    amount: 9750
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1035.0
+  - ledger_name: Output SGST
+    amount: 1035.0
+  narration: Bulk import transaction 11
+- voucher_type: Sales
+  date: 18-Apr-2025
+  due_date: 03-May-2025
+  invoice_no: SAL-112
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Paint Bucket 20L
+    quantity: 7
+    rate: 4500
+    amount: 31500
+  - item_name: Screwdriver Set
+    quantity: 18
+    rate: 400
+    amount: 7200
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 3483.0
+  - ledger_name: Output SGST
+    amount: 3483.0
+  narration: Bulk import transaction 12
+- voucher_type: Sales
+  date: 23-Apr-2025
+  due_date: 08-May-2025
+  invoice_no: SAL-113
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Steel Rod 10mm
+    quantity: 14
+    rate: 650
+    amount: 9100
+  - item_name: Drill Machine
+    quantity: 12
+    rate: 2500
+    amount: 30000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 3519.0
+  - ledger_name: Output SGST
+    amount: 3519.0
+  narration: Bulk import transaction 13
+- voucher_type: Sales
+  date: 30-May-2025
+  due_date: 14-Jun-2025
+  invoice_no: SAL-114
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 16
+    rate: 150
+    amount: 2400
+  - item_name: Paint Bucket 20L
+    quantity: 15
+    rate: 4500
+    amount: 67500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 6291.0
+  - ledger_name: Output SGST
+    amount: 6291.0
+  narration: Bulk import transaction 14
+- voucher_type: Sales
+  date: 18-May-2025
+  due_date: 02-Jun-2025
+  invoice_no: SAL-115
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Paint Bucket 20L
+    quantity: 2
+    rate: 4500
+    amount: 9000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 810.0
+  - ledger_name: Output SGST
+    amount: 810.0
+  narration: Bulk import transaction 15
+- voucher_type: Sales
+  date: 01-Apr-2025
+  due_date: 16-Apr-2025
+  invoice_no: SAL-116
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Cement Bag
+    quantity: 6
+    rate: 350
+    amount: 2100
+  - item_name: PVC Pipe 1 inch
+    quantity: 13
+    rate: 120
+    amount: 1560
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 329.4
+  - ledger_name: Output SGST
+    amount: 329.4
+  narration: Bulk import transaction 16
+- voucher_type: Sales
+  date: 22-May-2025
+  due_date: 06-Jun-2025
+  invoice_no: SAL-117
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: PVC Pipe 1 inch
+    quantity: 18
+    rate: 120
+    amount: 2160
+  - item_name: Hammer
+    quantity: 13
+    rate: 250
+    amount: 3250
+  - item_name: Drill Machine
+    quantity: 2
+    rate: 2500
+    amount: 5000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 936.9
+  - ledger_name: Output SGST
+    amount: 936.9
+  narration: Bulk import transaction 17
+- voucher_type: Sales
+  date: 09-May-2025
+  due_date: 24-May-2025
+  invoice_no: SAL-118
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Drill Machine
+    quantity: 13
+    rate: 2500
+    amount: 32500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 2925.0
+  - ledger_name: Output SGST
+    amount: 2925.0
+  narration: Bulk import transaction 18
+- voucher_type: Sales
+  date: 26-May-2025
+  due_date: 10-Jun-2025
+  invoice_no: SAL-119
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Steel Rod 10mm
+    quantity: 13
+    rate: 650
+    amount: 8450
+  - item_name: Hammer
+    quantity: 13
+    rate: 250
+    amount: 3250
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1053.0
+  - ledger_name: Output SGST
+    amount: 1053.0
+  narration: Bulk import transaction 19
+- voucher_type: Sales
+  date: 07-May-2025
+  due_date: 22-May-2025
+  invoice_no: SAL-120
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Screwdriver Set
+    quantity: 12
+    rate: 400
+    amount: 4800
+  - item_name: Drill Machine
+    quantity: 16
+    rate: 2500
+    amount: 40000
+  - item_name: Paint Bucket 20L
+    quantity: 8
+    rate: 4500
+    amount: 36000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 7272.0
+  - ledger_name: Output SGST
+    amount: 7272.0
+  narration: Bulk import transaction 20
+- voucher_type: Sales
+  date: 29-Apr-2025
+  due_date: 14-May-2025
+  invoice_no: SAL-121
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Hammer
+    quantity: 19
+    rate: 250
+    amount: 4750
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 427.5
+  - ledger_name: Output SGST
+    amount: 427.5
+  narration: Bulk import transaction 21
+- voucher_type: Sales
+  date: 20-Apr-2025
+  due_date: 05-May-2025
+  invoice_no: SAL-122
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 2
+    rate: 150
+    amount: 300
+  - item_name: Hammer
+    quantity: 8
+    rate: 250
+    amount: 2000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 207.0
+  - ledger_name: Output SGST
+    amount: 207.0
+  narration: Bulk import transaction 22
+- voucher_type: Sales
+  date: 18-Apr-2025
+  due_date: 03-May-2025
+  invoice_no: SAL-123
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: PVC Pipe 1 inch
+    quantity: 17
+    rate: 120
+    amount: 2040
+  - item_name: Steel Rod 10mm
+    quantity: 17
+    rate: 650
+    amount: 11050
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1178.1
+  - ledger_name: Output SGST
+    amount: 1178.1
+  narration: Bulk import transaction 23
+- voucher_type: Sales
+  date: 15-May-2025
+  due_date: 30-May-2025
+  invoice_no: SAL-124
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Steel Rod 10mm
+    quantity: 6
+    rate: 650
+    amount: 3900
+  - item_name: PVC Pipe 1 inch
+    quantity: 18
+    rate: 120
+    amount: 2160
+  - item_name: Cement Bag
+    quantity: 13
+    rate: 350
+    amount: 4550
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 954.9
+  - ledger_name: Output SGST
+    amount: 954.9
+  narration: Bulk import transaction 24
+- voucher_type: Sales
+  date: 26-May-2025
+  due_date: 10-Jun-2025
+  invoice_no: SAL-125
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: PVC Pipe 1 inch
+    quantity: 9
+    rate: 120
+    amount: 1080
+  - item_name: Paint Bucket 20L
+    quantity: 9
+    rate: 4500
+    amount: 40500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 3742.2
+  - ledger_name: Output SGST
+    amount: 3742.2
+  narration: Bulk import transaction 25
+- voucher_type: Sales
+  date: 28-May-2025
+  due_date: 12-Jun-2025
+  invoice_no: SAL-126
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: PVC Pipe 1 inch
+    quantity: 6
+    rate: 120
+    amount: 720
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 64.8
+  - ledger_name: Output SGST
+    amount: 64.8
+  narration: Bulk import transaction 26
+- voucher_type: Sales
+  date: 18-Apr-2025
+  due_date: 03-May-2025
+  invoice_no: SAL-127
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Screwdriver Set
+    quantity: 17
+    rate: 400
+    amount: 6800
+  - item_name: Paint Bucket 20L
+    quantity: 1
+    rate: 4500
+    amount: 4500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1017.0
+  - ledger_name: Output SGST
+    amount: 1017.0
+  narration: Bulk import transaction 27
+- voucher_type: Sales
+  date: 19-May-2025
+  due_date: 03-Jun-2025
+  invoice_no: SAL-128
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Cement Bag
+    quantity: 9
+    rate: 350
+    amount: 3150
+  - item_name: Paint Bucket 20L
+    quantity: 15
+    rate: 4500
+    amount: 67500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 6358.5
+  - ledger_name: Output SGST
+    amount: 6358.5
+  narration: Bulk import transaction 28
+- voucher_type: Sales
+  date: 24-Apr-2025
+  due_date: 09-May-2025
+  invoice_no: SAL-129
+  party_ledger: Global Builders
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 3
+    rate: 150
+    amount: 450
+  - item_name: Cement Bag
+    quantity: 16
+    rate: 350
+    amount: 5600
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 544.5
+  - ledger_name: Output SGST
+    amount: 544.5
+  narration: Bulk import transaction 29
+- voucher_type: Sales
+  date: 27-May-2025
+  due_date: 11-Jun-2025
+  invoice_no: SAL-130
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Paint Bucket 20L
+    quantity: 10
+    rate: 4500
+    amount: 45000
+  - item_name: Drill Machine
+    quantity: 20
+    rate: 2500
+    amount: 50000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 8550.0
+  - ledger_name: Output SGST
+    amount: 8550.0
+  narration: Bulk import transaction 30
+- voucher_type: Sales
+  date: 30-Apr-2025
+  due_date: 15-May-2025
+  invoice_no: SAL-131
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Drill Machine
+    quantity: 15
+    rate: 2500
+    amount: 37500
+  - item_name: Paint Bucket 20L
+    quantity: 11
+    rate: 4500
+    amount: 49500
+  - item_name: Hammer
+    quantity: 12
+    rate: 250
+    amount: 3000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 8100.0
+  - ledger_name: Output SGST
+    amount: 8100.0
+  narration: Bulk import transaction 31
+- voucher_type: Sales
+  date: 07-May-2025
+  due_date: 22-May-2025
+  invoice_no: SAL-132
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Drill Machine
+    quantity: 6
+    rate: 2500
+    amount: 15000
+  - item_name: Door Handle
+    quantity: 16
+    rate: 150
+    amount: 2400
+  - item_name: Hammer
+    quantity: 11
+    rate: 250
+    amount: 2750
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1813.5
+  - ledger_name: Output SGST
+    amount: 1813.5
+  narration: Bulk import transaction 32
+- voucher_type: Sales
+  date: 11-May-2025
+  due_date: 26-May-2025
+  invoice_no: SAL-133
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 6
+    rate: 150
+    amount: 900
+  - item_name: Screwdriver Set
+    quantity: 12
+    rate: 400
+    amount: 4800
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 513.0
+  - ledger_name: Output SGST
+    amount: 513.0
+  narration: Bulk import transaction 33
+- voucher_type: Sales
+  date: 01-Apr-2025
+  due_date: 16-Apr-2025
+  invoice_no: SAL-134
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Steel Rod 10mm
+    quantity: 20
+    rate: 650
+    amount: 13000
+  - item_name: Cement Bag
+    quantity: 10
+    rate: 350
+    amount: 3500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1485.0
+  - ledger_name: Output SGST
+    amount: 1485.0
+  narration: Bulk import transaction 34
+- voucher_type: Sales
+  date: 17-May-2025
+  due_date: 01-Jun-2025
+  invoice_no: SAL-135
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 15
+    rate: 150
+    amount: 2250
+  - item_name: Drill Machine
+    quantity: 10
+    rate: 2500
+    amount: 25000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 2452.5
+  - ledger_name: Output SGST
+    amount: 2452.5
+  narration: Bulk import transaction 35
+- voucher_type: Sales
+  date: 12-May-2025
+  due_date: 27-May-2025
+  invoice_no: SAL-136
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Steel Rod 10mm
+    quantity: 20
+    rate: 650
+    amount: 13000
+  - item_name: Screwdriver Set
+    quantity: 9
+    rate: 400
+    amount: 3600
+  - item_name: Drill Machine
+    quantity: 14
+    rate: 2500
+    amount: 35000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 4644.0
+  - ledger_name: Output SGST
+    amount: 4644.0
+  narration: Bulk import transaction 36
+- voucher_type: Sales
+  date: 02-Apr-2025
+  due_date: 17-Apr-2025
+  invoice_no: SAL-137
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 6
+    rate: 150
+    amount: 900
+  - item_name: PVC Pipe 1 inch
+    quantity: 8
+    rate: 120
+    amount: 960
+  - item_name: Drill Machine
+    quantity: 4
+    rate: 2500
+    amount: 10000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1067.4
+  - ledger_name: Output SGST
+    amount: 1067.4
+  narration: Bulk import transaction 37
+- voucher_type: Sales
+  date: 30-May-2025
+  due_date: 14-Jun-2025
+  invoice_no: SAL-138
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Screwdriver Set
+    quantity: 11
+    rate: 400
+    amount: 4400
+  - item_name: Paint Bucket 20L
+    quantity: 2
+    rate: 4500
+    amount: 9000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1206.0
+  - ledger_name: Output SGST
+    amount: 1206.0
+  narration: Bulk import transaction 38
+- voucher_type: Sales
+  date: 06-Apr-2025
+  due_date: 21-Apr-2025
+  invoice_no: SAL-139
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Paint Bucket 20L
+    quantity: 6
+    rate: 4500
+    amount: 27000
+  - item_name: Cement Bag
+    quantity: 2
+    rate: 350
+    amount: 700
+  - item_name: Drill Machine
+    quantity: 17
+    rate: 2500
+    amount: 42500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 6318.0
+  - ledger_name: Output SGST
+    amount: 6318.0
+  narration: Bulk import transaction 39
+- voucher_type: Sales
+  date: 11-May-2025
+  due_date: 26-May-2025
+  invoice_no: SAL-140
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Cement Bag
+    quantity: 13
+    rate: 350
+    amount: 4550
+  - item_name: Door Handle
+    quantity: 10
+    rate: 150
+    amount: 1500
+  - item_name: Steel Rod 10mm
+    quantity: 1
+    rate: 650
+    amount: 650
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 603.0
+  - ledger_name: Output SGST
+    amount: 603.0
+  narration: Bulk import transaction 40
+- voucher_type: Sales
+  date: 13-May-2025
+  due_date: 28-May-2025
+  invoice_no: SAL-141
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Drill Machine
+    quantity: 10
+    rate: 2500
+    amount: 25000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 2250.0
+  - ledger_name: Output SGST
+    amount: 2250.0
+  narration: Bulk import transaction 41
+- voucher_type: Sales
+  date: 19-Apr-2025
+  due_date: 04-May-2025
+  invoice_no: SAL-142
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Cement Bag
+    quantity: 2
+    rate: 350
+    amount: 700
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 63.0
+  - ledger_name: Output SGST
+    amount: 63.0
+  narration: Bulk import transaction 42
+- voucher_type: Sales
+  date: 15-May-2025
+  due_date: 30-May-2025
+  invoice_no: SAL-143
+  party_ledger: Elite Construction
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 18
+    rate: 150
+    amount: 2700
+  - item_name: Hammer
+    quantity: 14
+    rate: 250
+    amount: 3500
+  - item_name: Paint Bucket 20L
+    quantity: 5
+    rate: 4500
+    amount: 22500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 2583.0
+  - ledger_name: Output SGST
+    amount: 2583.0
+  narration: Bulk import transaction 43
+- voucher_type: Sales
+  date: 09-May-2025
+  due_date: 24-May-2025
+  invoice_no: SAL-144
+  party_ledger: Global Builders
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Screwdriver Set
+    quantity: 18
+    rate: 400
+    amount: 7200
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 648.0
+  - ledger_name: Output SGST
+    amount: 648.0
+  narration: Bulk import transaction 44
+- voucher_type: Sales
+  date: 24-May-2025
+  due_date: 08-Jun-2025
+  invoice_no: SAL-145
+  party_ledger: Global Builders
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 2
+    rate: 150
+    amount: 300
+  - item_name: Cement Bag
+    quantity: 16
+    rate: 350
+    amount: 5600
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 531.0
+  - ledger_name: Output SGST
+    amount: 531.0
+  narration: Bulk import transaction 45
+- voucher_type: Sales
+  date: 10-May-2025
+  due_date: 25-May-2025
+  invoice_no: SAL-146
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Cement Bag
+    quantity: 9
+    rate: 350
+    amount: 3150
+  - item_name: PVC Pipe 1 inch
+    quantity: 13
+    rate: 120
+    amount: 1560
+  - item_name: Door Handle
+    quantity: 14
+    rate: 150
+    amount: 2100
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 612.9
+  - ledger_name: Output SGST
+    amount: 612.9
+  narration: Bulk import transaction 46
+- voucher_type: Sales
+  date: 17-Apr-2025
+  due_date: 02-May-2025
+  invoice_no: SAL-147
+  party_ledger: Raj Hardware Store
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Drill Machine
+    quantity: 15
+    rate: 2500
+    amount: 37500
+  - item_name: Door Handle
+    quantity: 11
+    rate: 150
+    amount: 1650
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 3523.5
+  - ledger_name: Output SGST
+    amount: 3523.5
+  narration: Bulk import transaction 47
+- voucher_type: Sales
+  date: 10-May-2025
+  due_date: 25-May-2025
+  invoice_no: SAL-148
+  party_ledger: Shree Tools Mart
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Screwdriver Set
+    quantity: 15
+    rate: 400
+    amount: 6000
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 540.0
+  - ledger_name: Output SGST
+    amount: 540.0
+  narration: Bulk import transaction 48
+- voucher_type: Sales
+  date: 07-May-2025
+  due_date: 22-May-2025
+  invoice_no: SAL-149
+  party_ledger: Global Builders
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Door Handle
+    quantity: 3
+    rate: 150
+    amount: 450
+  - item_name: Drill Machine
+    quantity: 5
+    rate: 2500
+    amount: 12500
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 1165.5
+  - ledger_name: Output SGST
+    amount: 1165.5
+  narration: Bulk import transaction 49
+- voucher_type: Sales
+  date: 01-May-2025
+  due_date: 16-May-2025
+  invoice_no: SAL-150
+  party_ledger: Metro Hardware
+  sales_ledger: Sales Account
+  inventory:
+  - item_name: Cement Bag
+    quantity: 15
+    rate: 350
+    amount: 5250
+  ledger_allocations:
+  - ledger_name: Output CGST
+    amount: 472.5
+  - ledger_name: Output SGST
+    amount: 472.5
+  narration: Bulk import transaction 50

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/app/utils/auth";
-import { sendInvoiceReminderById } from "@/app/utils/sendInvoiceReminder";
+import { auth } from "@/lib/auth";
+import { sendInvoiceReminderById } from "@/lib/mail-service";
 
 export async function POST(
   req: NextRequest,

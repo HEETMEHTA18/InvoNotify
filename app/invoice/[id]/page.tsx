@@ -43,7 +43,9 @@ type Invoice = {
     amount?: number;
 };
 
-export default function InvoiceDetailPage() {
+import { Suspense } from "react";
+
+function InvoiceDetailContent() {
     const { id } = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -399,5 +401,13 @@ export default function InvoiceDetailPage() {
          `}</style>
             </Card>
         </div>
+    );
+}
+
+export default function InvoiceDetailPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+            <InvoiceDetailContent />
+        </Suspense>
     );
 }

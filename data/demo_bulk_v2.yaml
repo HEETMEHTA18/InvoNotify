@@ -1,0 +1,87 @@
+transactions:
+- voucher_type: Sales
+  date: 15-Jun-2025
+  due_date: 30-Jun-2025
+  invoice_no: DEMO-V2-001
+  party_ledger: Rajesh Electronics
+  inventory:
+  - item_name: LED Monitor 24 inch
+    quantity: 5
+    rate: 8500
+    amount: 42500
+  - item_name: Wireless Mouse
+    quantity: 10
+    rate: 650
+    amount: 6500
+  ledger_allocations:
+  - ledger_name: GST 18%
+    amount: 8820
+  narration: Office equipment supply
+- voucher_type: Sales
+  date: 18-Jun-2025
+  due_date: 05-Jul-2025
+  invoice_no: DEMO-V2-002
+  party_ledger: Aman Textiles
+  inventory:
+  - item_name: Cotton Fabric Roll
+    quantity: 20
+    rate: 2200
+    amount: 44000
+  ledger_allocations:
+  - ledger_name: GST 5%
+    amount: 2200
+  narration: Regular fabric supply
+- voucher_type: Sales
+  date: 20-Jun-2025
+  due_date: 20-Jun-2025
+  invoice_no: DEMO-V2-003
+  party_ledger: Sunrise Cafe
+  inventory:
+  - item_name: Coffee Beans 1kg
+    quantity: 30
+    rate: 450
+    amount: 13500
+  - item_name: Sugar 5kg
+    quantity: 5
+    rate: 250
+    amount: 1250
+  ledger_allocations:
+  - ledger_name: GST 12%
+    amount: 1770
+  narration: Monthly pantry supplies
+- voucher_type: Sales
+  date: 22-Jun-2025
+  due_date: 07-Jul-2025
+  invoice_no: DEMO-V2-004
+  party_ledger: TechNodes Solutions
+  inventory:
+  - item_name: Server Rack 42U
+    quantity: 1
+    rate: 45000
+    amount: 45000
+  - item_name: CAT6 Cable 305m
+    quantity: 2
+    rate: 7500
+    amount: 15000
+  ledger_allocations:
+  - ledger_name: GST 18%
+    amount: 10800
+  narration: IT Infrastructure setup
+- voucher_type: Sales
+  date: 25-Jun-2025
+  due_date: 10-Jul-2025
+  invoice_no: DEMO-V2-005
+  party_ledger: Bright School
+  inventory:
+  - item_name: Student Chairs
+    quantity: 50
+    rate: 1200
+    amount: 60000
+  - item_name: Whiteboards
+    quantity: 10
+    rate: 3500
+    amount: 35000
+  ledger_allocations:
+  - ledger_name: GST 12%
+    amount: 11400
+  narration: New classroom furniture

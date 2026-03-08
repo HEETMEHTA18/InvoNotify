@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/utils/db";
-import { auth } from "@/app/utils/auth";
-import nodemailer from "nodemailer";
+import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
+import { sendInvoiceReminder } from "@/lib/gmail";
 
 // POST: Send invoice PDF to client email
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,17 +12,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const { id } = await params;
-    const { pdfBase64 } = await req.json();
+    const { pdfBase64, htmlContent, subject: customSubject } = await req.json();
 
     if (!pdfBase64) {
       return NextResponse.json({ error: "PDF data is required" }, { status: 400 });
     }
 
+    // User isolation: Only allow access to invoices owned by the user
     const invoice = await prisma.invoice.findUnique({
-      where: { id: Number(id) },
+      where: { id: Number(id), ownerUserId: session.user.id },
       include: { items: true },
     });
-
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
@@ -31,40 +31,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Client email is missing" }, { status: 400 });
     }
 
-    let transport;
-    if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-      transport = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.GMAIL_USER,
-          pass: process.env.GMAIL_APP_PASSWORD,
-        },
-      });
-    } else if (process.env.MAILTRAP_TOKEN) {
-      transport = nodemailer.createTransport({
-        host: "send.smtp.mailtrap.io",
-        port: 587,
-        auth: {
-          user: "api",
-          pass: process.env.MAILTRAP_TOKEN,
-        },
-      });
-    } else {
-      return NextResponse.json({ error: "No email credentials configured" }, { status: 500 });
-    }
+    // Convert base64 to Uint8Array for the Gmail service
+    const pdfBuffer = new Uint8Array(Buffer.from(pdfBase64, "base64"));
 
-    // Convert base64 to buffer for attachment
-    const pdfBuffer = Buffer.from(pdfBase64, "base64");
-
-    const result = await transport.sendMail({
-      from: {
-        address: process.env.GMAIL_USER || (process.env.EMAIL_FROM || "hello@example.com"),
-        name: invoice.senderName || "Invoice Management",
-      },
-      to: invoice.clientEmail,
-      subject: `Invoice ${invoice.invoiceNumber} from ${invoice.senderName || "Invoice Management"}`,
-      text: `Dear ${invoice.clientName},\n\nPlease find attached your invoice ${invoice.invoiceNumber}.\n\nTotal Amount: $${Number(invoice.total).toFixed(2)}\nDue Date: ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "N/A"}\n\nThank you for your business!\n\nBest regards,\n${invoice.senderName || "Invoice Management"}`,
-      html: `
+    const subject = customSubject || `Invoice ${invoice.invoiceNumber} from ${invoice.senderName || "Invoice Management"}`;
+    const body = htmlContent || `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
           <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px; text-align: center; border-radius: 8px 8px 0 0;">
             <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Invoice</h1>
@@ -81,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #718096; font-size: 14px;">Total Amount</td>
-                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; text-align: right; font-weight: 600;">$${Number(invoice.total).toFixed(2)}</td>
+                  <td style="padding: 8px 0; color: #2d3748; font-size: 14px; text-align: right; font-weight: 600;">${invoice.currency} ${Number(invoice.total).toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #718096; font-size: 14px;">Due Date</td>
@@ -99,23 +70,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             <p style="font-size: 14px; color: #4a5568; margin-bottom: 0;">Best regards,<br/><strong>${invoice.senderName || "Invoice Management"}</strong></p>
           </div>
         </div>
-      `,
-      attachments: [
-        {
-          filename: `${invoice.invoiceNumber || "invoice"}.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
-      ],
-    });
+      `;
 
-    if (result.rejected?.length) {
-      throw new Error(`Email delivery failed: ${result.rejected.join(", ")}`);
-    }
+    await sendInvoiceReminder({
+      userId: session.user.id,
+      to: invoice.clientEmail,
+      subject,
+      body,
+      attachment: pdfBuffer,
+      attachmentName: `${invoice.invoiceNumber || "invoice"}.pdf`,
+    });
 
     return NextResponse.json({ message: `Invoice sent to ${invoice.clientEmail}` });
   } catch (error) {
     console.error("Failed to send invoice:", error);
-    return NextResponse.json({ error: "Failed to send invoice email" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Failed to send invoice email";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

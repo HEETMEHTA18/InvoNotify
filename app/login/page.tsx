@@ -1,37 +1,42 @@
+
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { handleEmailSignIn } from "./actions";
-import { auth } from "@/app/utils/auth";
-import { redirect } from "next/navigation";
-import { SubmitButton } from "../components/SubmitButtom";
+import { SubmitButton } from "@/components/SubmitButton";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
 
-export default async function Login({
-    searchParams,
-}: {
-    searchParams: Promise<{ error?: string; success?: string }>
-}) {
-    const session = await auth();
-    if (session?.user) {
-        redirect("/dashboard");
-    }
+import { Suspense } from "react";
 
-    const params = await searchParams
+function LoginContent() {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+    const searchParams = useSearchParams();
 
-    const errorMessages = {
+    useEffect(() => {
+        if (session?.user) {
+            router.replace("/dashboard");
+        }
+    }, [session, router]);
+
+    const errorMessages = useMemo(() => ({
         signin_failed: "Invalid email or password",
         db_unavailable: "Database connection error. Please try again later.",
-    }
+    }), []);
 
-    const successMessages = {
+    const successMessages = useMemo(() => ({
         registered: "Account created successfully! Please login.",
-    }
+    }), []);
 
-    const error = params?.error
-    const success = params?.success
-    const errorMessage = error ? errorMessages[error as keyof typeof errorMessages] : null
-    const successMessage = success ? successMessages[success as keyof typeof successMessages] : null
+    const error = searchParams.get("error");
+    const success = searchParams.get("success");
+    const errorMessage = error ? errorMessages[error as keyof typeof errorMessages] : null;
+    const successMessage = success ? successMessages[success as keyof typeof successMessages] : null;
 
     return (
         <div className="flex h-screen w-full items-center justify-center px-4">
@@ -87,5 +92,17 @@ export default async function Login({
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function Login() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-screen w-full items-center justify-center">
+                <div className="text-gray-500">Loading...</div>
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     );
 }

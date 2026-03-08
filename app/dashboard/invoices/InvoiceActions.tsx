@@ -1,9 +1,9 @@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Pencil, Download, Mail, Trash2, CheckCircle2, Banknote, MessageSquare } from "lucide-react";
+import { MoreHorizontal, Pencil, Download, Mail, Trash2, CheckCircle2, Banknote, MessageSquare, Phone } from "lucide-react";
 import React from "react";
 
-export function InvoiceActions({ invoice, onEdit, onDelete, onMarkPaid, onReminder, onSendSms, onDownload, onRecordPayment }: any) {
+export function InvoiceActions({ invoice, onEdit, onDelete, onMarkPaid, onReminder, onSendSms, onVoiceCall, onDownload, onRecordPayment }: any) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -27,6 +27,9 @@ export function InvoiceActions({ invoice, onEdit, onDelete, onMarkPaid, onRemind
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onSendSms}>
           <MessageSquare className="w-4 h-4 mr-2" /> Reminder SMS
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onVoiceCall} className="text-green-700 focus:text-green-800 focus:bg-green-50">
+          <Phone className="w-4 h-4 mr-2" /> Voice Call Reminder
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-700">
           <Trash2 className="w-4 h-4 mr-2" /> Delete Invoice

@@ -21,6 +21,8 @@ import {
   AlertCircle,
   MessageSquare,
   ChevronDown,
+  Save,
+  Database,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { REMINDER_CHANNEL_OPTIONS, REMINDER_OFFSET_OPTIONS, type ReminderChannel } from "@/app/utils/invoiceReminders";
+import { REMINDER_CHANNEL_OPTIONS, REMINDER_OFFSET_OPTIONS, type ReminderChannel } from "@/lib/reminders";
 
 type InvoiceItem = {
   description: string;
@@ -47,7 +49,9 @@ type CompanySettings = {
 
 type ImportMethod = "manual" | "tally" | "photo" | null;
 
-export default function CreateInvoicePage() {
+import { Suspense } from "react";
+
+function CreateInvoiceContent() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -151,6 +155,7 @@ export default function CreateInvoicePage() {
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [updatingItemIndex, setUpdatingItemIndex] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -167,6 +172,56 @@ export default function CreateInvoicePage() {
       }
     } catch {
       console.error("Failed to fetch products");
+    }
+  }
+
+  async function handleSyncProductMaster(index: number) {
+    const item = items[index];
+    const product = products.find(p => p.name === item.description || (item.hsnCode && p.hsnCode === item.hsnCode));
+
+    setUpdatingItemIndex(index);
+    try {
+      if (product) {
+        // Update
+        const res = await fetch(`/api/products/${product.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: item.description,
+            hsnCode: item.hsnCode,
+            basePrice: item.rate,
+            defaultTaxRate: taxRate,
+          }),
+        });
+        if (res.ok) {
+          await fetchProducts();
+          alert("Product updated in master catalog!");
+        } else {
+          alert("Failed to update product master.");
+        }
+      } else {
+        // Create
+        const res = await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: item.description,
+            hsnCode: item.hsnCode,
+            basePrice: item.rate,
+            defaultTaxRate: taxRate,
+          }),
+        });
+        if (res.ok) {
+          await fetchProducts();
+          alert("Product added to master catalog!");
+        } else {
+          alert("Failed to add product to master.");
+        }
+      }
+    } catch (err) {
+      alert("Error syncing product master.");
+    } finally {
+      setUpdatingItemIndex(null);
     }
   }
 
@@ -1371,11 +1426,10 @@ export default function CreateInvoicePage() {
                         key={offset}
                         type="button"
                         onClick={() => toggleReminderOffset(offset)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                          reminderOffsets.includes(offset)
-                            ? "bg-gray-900 text-white border-gray-900"
-                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                        }`}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${reminderOffsets.includes(offset)
+                          ? "bg-gray-900 text-white border-gray-900"
+                          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                          }`}
                       >
                         {offset === 0 ? "On due date" : `${offset} day${offset > 1 ? "s" : ""} before`}
                       </button>
@@ -1470,7 +1524,20 @@ export default function CreateInvoicePage() {
                   <input
                     type="text"
                     value={item.hsnCode}
-                    onChange={(e) => updateItem(index, "hsnCode", e.target.value)}
+                    onChange={(e) => {
+                      const hsn = e.target.value;
+                      updateItem(index, "hsnCode", hsn);
+
+                      // Auto-fill from product master by HSN
+                      if (hsn) {
+                        const product = products.find(p => p.hsnCode === hsn);
+                        if (product) {
+                          updateItem(index, "description", product.name);
+                          updateItem(index, "rate", Number(product.basePrice));
+                          if (product.defaultTaxRate && taxRate === 0) setTaxRate(Number(product.defaultTaxRate));
+                        }
+                      }
+                    }}
                     placeholder="HSN"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                   />
@@ -1512,7 +1579,28 @@ export default function CreateInvoicePage() {
                     </div>
                   </div>
                 </div>
-                <div className="col-span-1 flex items-start justify-center pt-1">
+                <div className="col-span-1 flex items-start justify-center pt-1 gap-1">
+                  {/* Sync to Master Button */}
+                  {item.description && (
+                    <button
+                      type="button"
+                      onClick={() => handleSyncProductMaster(index)}
+                      disabled={updatingItemIndex !== null}
+                      title={products.some(p => p.name === item.description || (item.hsnCode && p.hsnCode === item.hsnCode)) ? "Update Product Master" : "Add to Product Master"}
+                      className={`p-1.5 rounded-lg transition-all ${products.some(p => p.name === item.description || (item.hsnCode && p.hsnCode === item.hsnCode))
+                        ? "text-gray-400 hover:text-blue-500 hover:bg-blue-50"
+                        : "text-gray-400 hover:text-emerald-500 hover:bg-emerald-50"
+                        }`}
+                    >
+                      {updatingItemIndex === index ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : products.some(p => p.name === item.description || (item.hsnCode && p.hsnCode === item.hsnCode)) ? (
+                        <Database className="h-4 w-4" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                   {items.length > 1 && (
                     <button
                       type="button"
@@ -1889,5 +1977,20 @@ export default function CreateInvoicePage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function CreateInvoicePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-[#596778] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-500 font-medium">Loading Invoice Editor...</p>
+        </div>
+      </div>
+    }>
+      <CreateInvoiceContent />
+    </Suspense>
   );
 }

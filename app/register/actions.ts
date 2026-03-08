@@ -1,6 +1,6 @@
 "use server"
 
-import { prisma } from "@/app/utils/db"
+import { prisma } from "@/lib/db"
 import { redirect } from "next/navigation"
 import bcrypt from "bcryptjs"
 import { isRedirectError } from "next/dist/client/components/redirect-error"

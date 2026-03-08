@@ -1,10 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/app/utils/db";
+import { prisma } from "@/lib/db";
 import * as yaml from "js-yaml";
 import { XMLParser } from "fast-xml-parser";
 
-import { auth } from "@/app/utils/auth";
+import { auth } from "@/lib/auth";
 
 export async function POST(req: Request) {
     try {
@@ -203,8 +203,9 @@ export async function POST(req: Request) {
                 // Find customer if exists
                 let customerId = null;
                 if (txn.party_ledger) {
-                    const customer = await prisma.customer.findUnique({
-                        where: { name: txn.party_ledger }
+                    // Optionally filter customer by userId if multi-tenant
+                    const customer = await prisma.customer.findFirst({
+                        where: { name: txn.party_ledger /*, userId: session?.user?.id */ }
                     });
                     if (customer) customerId = customer.id;
                 }
@@ -215,11 +216,10 @@ export async function POST(req: Request) {
                 // Check for duplicate invoice number
                 if (invoiceNumber) {
                     const existingInvoice = await prisma.invoice.findFirst({
-                        where: { invoiceNumber: invoiceNumber }
+                        where: { invoiceNumber: invoiceNumber, ownerUserId: session?.user?.id }
                     });
                     if (existingInvoice) {
                         console.log(`Skipping duplicate invoice: ${invoiceNumber}`);
-
                         // FIX: If the existing invoice has no owner, claim it for this user
                         if (!existingInvoice.ownerUserId && session?.user?.id) {
                             console.log(`Claiming orphaned invoice: ${invoiceNumber} for user ${session.user.id}`);

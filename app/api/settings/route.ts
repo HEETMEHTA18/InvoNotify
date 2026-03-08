@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/utils/db";
-import { auth } from "@/app/utils/auth";
+import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 // GET: Get company settings for current user
 export async function GET() {

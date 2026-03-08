@@ -1,6 +1,6 @@
 "use server"
 
-import { signIn } from "@/app/utils/auth"
+import { signIn } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { Prisma } from "@prisma/client"

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { MobileMenu } from "./components/MobileMenu";
-import { auth } from "./utils/auth";
+import { MobileMenu } from "@/components/MobileMenu";
+import { auth } from "@/lib/auth";
 import {
   FileText,
   ArrowRight,

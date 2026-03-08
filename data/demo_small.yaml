@@ -1,0 +1,49 @@
+# Small Demo YAML - 3 Invoices
+transactions:
+  - voucher_type: "Sales"
+    date: "01-Jul-2025"
+    invoice_no: "MINI-001"
+    party_ledger: "Quick Mart"
+    inventory:
+      - item_name: "Plastic Chairs"
+        quantity: 4
+        rate: 450
+        amount: 1800
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 162
+      - ledger_name: "Output SGST"
+        amount: 162
+    narration: "Cash sale for Quick Mart"
+
+  - voucher_type: "Sales"
+    date: "05-Jul-2025"
+    invoice_no: "MINI-002"
+    party_ledger: "Zion Builders"
+    inventory:
+      - item_name: "Steel Rods"
+        quantity: 10
+        rate: 800
+        amount: 8000
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 720
+      - ledger_name: "Output SGST"
+        amount: 720
+    narration: "Site delivery for rods"
+
+  - voucher_type: "Sales"
+    date: "10-Jul-2025"
+    invoice_no: "MINI-003"
+    party_ledger: "Apex Tech"
+    inventory:
+      - item_name: "Keyboard K100"
+        quantity: 2
+        rate: 1200
+        amount: 2400
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 216
+      - ledger_name: "Output SGST"
+        amount: 216
+    narration: "Peripheral upgrade"

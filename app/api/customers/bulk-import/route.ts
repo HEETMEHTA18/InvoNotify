@@ -1,6 +1,6 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/app/utils/db";
+import { prisma } from "@/lib/db";
 import * as yaml from "js-yaml";
 
 export async function POST(req: Request) {

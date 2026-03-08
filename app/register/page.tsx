@@ -2,9 +2,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { handleRegister } from "./actions";
-import { SubmitButton } from "../components/SubmitButtom";
+import { SubmitButton } from "@/components/SubmitButton";
 import Link from "next/link";
-import { auth } from "@/app/utils/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function Register({

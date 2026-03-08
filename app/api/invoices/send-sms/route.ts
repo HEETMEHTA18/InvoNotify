@@ -1,6 +1,7 @@
+import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { sendSMS } from "@/lib/sms";
-import { prisma } from "@/app/utils/db";
+import { prisma } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
     try {
@@ -19,10 +20,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid Invoice ID" }, { status: 400 });
         }
 
+        // User isolation: Only allow access to invoices owned by the user
+        const session = await auth();
+        if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const invoice = await prisma.invoice.findUnique({
-            where: { id },
+            where: { id, ownerUserId: session.user.id },
         });
-
         if (!invoice) {
             return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
         }
@@ -50,3 +53,4 @@ export async function POST(req: NextRequest) {
         );
     }
 }
+

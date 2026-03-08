@@ -8,9 +8,39 @@ on:
 jobs:
   send-reminders:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
-      - name: Trigger Reminders
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Trigger Reminders via API
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          REMINDER_CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/reminders/auto" \
-          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-          -H "Content-Type: application/json"
+          echo "Triggering reminders at ${SITE_URL}/api/reminders/auto ..."
+          HTTP_STATUS=$(curl -s -o /tmp/reminder_response.json -w "%{http_code}" \
+            --max-time 60 \
+            -X POST "${SITE_URL}/api/reminders/auto" \
+            -H "Authorization: Bearer ${REMINDER_CRON_SECRET}" \
+            -H "x-cron-secret: ${REMINDER_CRON_SECRET}" \
+            -H "Content-Type: application/json")
+          echo "HTTP Status: ${HTTP_STATUS}"
+          echo "Response body:"
+          cat /tmp/reminder_response.json || true
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "ERROR: Reminder API returned HTTP ${HTTP_STATUS}"
+            exit 1
+          fi
+          echo "Reminders triggered successfully."
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Daily reminder job failed. Check the API logs at ${SITE_URL}/api/reminders/auto"

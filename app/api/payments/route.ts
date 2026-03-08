@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/utils/db";
+import { prisma } from "@/lib/db";
 
 // POST: Record a payment
 export async function POST(req: NextRequest) {

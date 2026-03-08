@@ -139,20 +139,25 @@ model InvoiceItem {
 }
 
 model Customer {
-  id             Int       @id @default(autoincrement())
-  name           String    @unique
-  group          String?
-  openingBalance Decimal   @default(0) @db.Decimal(10, 2)
-  address        String?
-  city           String?
-  state          String?
-  country        String?
-  gstin          String?
-  phone          String?
-  email          String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  invoices       Invoice[]
+  id               Int       @id @default(autoincrement())
+  name             String    @unique
+  group            String?
+  openingBalance   Decimal   @default(0) @db.Decimal(10, 2)
+  address          String?
+  city             String?
+  state            String?
+  country          String?
+  gstin            String?
+  phone            String?
+  email            String?
+  /// Date of their very first invoice — used to determine "regular customer (2+ years)" status
+  firstInvoiceAt   DateTime?
+  /// When true, this customer is exempt from automatic reminder emails.
+  /// The client can still send reminders manually per-invoice.
+  isVipExempt      Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  invoices         Invoice[]
 }
 
 model CompanySettings {

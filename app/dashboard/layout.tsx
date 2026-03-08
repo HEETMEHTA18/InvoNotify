@@ -1,9 +1,9 @@
 
 import Link from "next/link";
 import { User, LogOut, LayoutDashboard, FileText, Menu } from "lucide-react";
-import { requireUser } from "../utils/hooks";
+import { requireUser } from "@/lib/hooks";
 import { DashboardLinks } from "./DashboardLink";
-import { signOut } from "../utils/auth";
+import { signOut } from "@/lib/auth";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -70,6 +70,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
                                     <Link href="/dashboard/invoices" className="flex items-center gap-2 cursor-pointer">
                                         <FileText className="h-4 w-4" />
                                         Invoices
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/dashboard/profile" className="flex items-center gap-2 cursor-pointer">
+                                        <User className="h-4 w-4" />
+                                        Profile
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />

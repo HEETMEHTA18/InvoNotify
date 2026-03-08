@@ -1,7 +1,9 @@
 
+
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/utils/db";
-import { normalizeReminderChannel, normalizeReminderSettings } from "@/app/utils/invoiceReminders";
+import { prisma } from "@/lib/db";
+import { normalizeReminderChannel, normalizeReminderSettings } from "@/lib/reminders";
+import { auth } from "@/lib/auth";
 
 function isReminderSchemaMismatch(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -23,8 +25,11 @@ function isReminderSchemaMismatch(error: unknown) {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    // User isolation: Only allow access to invoices owned by the user
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const invoice = await prisma.invoice.findUnique({
-      where: { id: Number(id) },
+      where: { id: Number(id), ownerUserId: session.user.id },
       include: { items: true },
     });
     if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -44,11 +49,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const invoiceId = Number(id);
     let reminderFieldsSupported = true;
 
+    // User isolation: Only allow access to invoices owned by the user
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const existingBase = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+      where: { id: invoiceId, ownerUserId: session.user.id },
       select: { amountPaid: true, dueDate: true },
     });
-
     if (!existingBase) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
@@ -64,8 +71,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     } | null = null;
 
     try {
+      // User isolation: Only allow access to invoices owned by the user
+      const session = await auth();
+      if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       existingReminder = await prisma.invoice.findUnique({
-        where: { id: invoiceId },
+        where: { id: invoiceId, ownerUserId: session.user.id },
         select: {
           ownerUserId: true,
           clientPhone: true,
@@ -225,6 +235,54 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         include: { items: true },
       });
     }
+
+    // Immediate reminder check
+    if (invoice.autoReminderEnabled && invoice.dueDate && invoice.status !== "Paid") {
+      const { getReminderMatchForDate } = await import("@/lib/reminders");
+      const { sendInvoiceReminderById } = await import("@/lib/mail-service");
+
+      const match = getReminderMatchForDate({
+        dueDate: invoice.dueDate,
+        reminderOffsets: (invoice.reminderOffsets as number[]) || [],
+        overdueReminderEnabled: invoice.overdueReminderEnabled,
+        overdueReminderEveryDays: invoice.overdueReminderEveryDays,
+      });
+
+      if (match) {
+        // Check if already sent for this specific reminder key
+        const alreadySent = await prisma.invoiceReminderLog.findUnique({
+          where: {
+            invoiceId_reminderKey: {
+              invoiceId: invoice.id,
+              reminderKey: match.reminderKey,
+            },
+          },
+        });
+
+        if (!alreadySent) {
+          try {
+            await sendInvoiceReminderById({
+              invoiceId: invoice.id,
+              reminderType: match.reminderType,
+              daysUntilDue: match.daysUntilDue,
+              daysOverdue: match.daysOverdue,
+            });
+
+            await prisma.invoiceReminderLog.create({
+              data: {
+                invoiceId: invoice.id,
+                reminderKey: match.reminderKey,
+                reminderType: match.reminderType,
+                targetDate: match.targetDate,
+              },
+            });
+          } catch (e) {
+            console.error("Failed to send immediate invoice reminder on update:", e);
+          }
+        }
+      }
+    }
+
     return NextResponse.json(invoice);
   } catch (error) {
     console.error("Failed to update invoice:", error);
