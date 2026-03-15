@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { prisma, Prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 // Helper to get a numeric invoice amount
