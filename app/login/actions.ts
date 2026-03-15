@@ -3,7 +3,7 @@
 import { signIn } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@/lib/db"
 
 export async function handleEmailSignIn(formData: FormData) {
   const email = formData.get("email") as string;
