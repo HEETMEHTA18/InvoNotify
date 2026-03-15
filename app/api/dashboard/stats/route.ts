@@ -1,3 +1,8 @@
+import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
+
 // Helper to get a numeric invoice amount
 function invoiceAmount(total: Prisma.Decimal | number | string | null | undefined, amount: Prisma.Decimal | number | string | null | undefined): number {
     const numericValue = (value: Prisma.Decimal | number | string | null | undefined) => Number(value ?? 0);
@@ -36,10 +41,6 @@ async function getRevenueBuckets(
         ORDER BY bucket_start ASC
     `;
 }
-import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
 
 type RevenueBucketRow = {
     bucket_start: Date;
