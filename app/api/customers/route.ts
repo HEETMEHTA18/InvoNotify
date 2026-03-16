@@ -6,12 +6,13 @@ import { auth } from "@/lib/auth";
 export async function GET() {
     try {
         const session = await auth();
-        if (!session?.user?.id) {
+        const userId = session?.user?.id;
+        if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const customers = await prisma.customer.findMany({
-            where: { ownerUserId: session.user.id },
+            where: { ownerUserId: userId },
             orderBy: { name: 'asc' }
         });
         return NextResponse.json(customers);
@@ -25,7 +26,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();
-        if (!session?.user?.id) {
+        const userId = session?.user?.id;
+        if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
         const customer = await prisma.customer.create({
             data: {
                 ...data,
-                ownerUserId: session.user.id,
+                ownerUserId: userId,
             }
         });
         return NextResponse.json(customer, { status: 201 });

@@ -6,7 +6,8 @@ import { auth } from "@/lib/auth";
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();
-        if (!session?.user?.id) {
+        const userId = session?.user?.id;
+        if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
         const result = await prisma.$transaction(async (tx) => {
             // 1. Fetch current invoice state WITH ownership check
             const invoice = await tx.invoice.findFirst({
-                where: { id: invId, ownerUserId: session.user.id },
+                where: { id: invId, ownerUserId: userId },
                 select: { total: true, amountPaid: true, balance: true }
             });
 

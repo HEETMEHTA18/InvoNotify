@@ -40,37 +40,34 @@ export async function POST(req: NextRequest) {
             try {
                 if (!cust.name) continue;
 
-                // Upsert customer with owner isolation
-                const customer = await prisma.customer.upsert({
-                    where: {
-                        name_ownerUserId: {
-                            name: cust.name,
-                            ownerUserId: userId
-                        }
-                    },
-                    update: {
-                        openingBalance: parseFloat(cust.opening_balance) || 0,
-                        address: Array.isArray(cust.address) ? cust.address.join(", ") : cust.address || "",
-                        state: cust.state || "",
-                        country: cust.country || "",
-                        gstin: cust.gstin || "",
-                        phone: cust.contact?.phone || "",
-                        email: cust.contact?.email || "",
-                        group: cust.group || ""
-                    },
-                    create: {
-                        name: cust.name,
-                        ownerUserId: userId,
-                        openingBalance: parseFloat(cust.opening_balance) || 0,
-                        address: Array.isArray(cust.address) ? cust.address.join(", ") : cust.address || "",
-                        state: cust.state || "",
-                        country: cust.country || "",
-                        gstin: cust.gstin || "",
-                        phone: cust.contact?.phone || "",
-                        email: cust.contact?.email || "",
-                        group: cust.group || ""
-                    }
+                // Find existing customer by name + owner (compound unique may have nullable ownerUserId)
+                const existing = await prisma.customer.findFirst({
+                    where: { name: cust.name, ownerUserId: userId }
                 });
+
+                const customerData = {
+                    openingBalance: parseFloat(cust.opening_balance) || 0,
+                    address: Array.isArray(cust.address) ? cust.address.join(", ") : cust.address || "",
+                    state: cust.state || "",
+                    country: cust.country || "",
+                    gstin: cust.gstin || "",
+                    phone: cust.contact?.phone || "",
+                    email: cust.contact?.email || "",
+                    group: cust.group || ""
+                };
+
+                const customer = existing
+                    ? await prisma.customer.update({
+                        where: { id: existing.id },
+                        data: customerData
+                    })
+                    : await prisma.customer.create({
+                        data: {
+                            name: cust.name,
+                            ownerUserId: userId,
+                            ...customerData
+                        }
+                    });
 
                 created.push(customer);
             } catch (error) {

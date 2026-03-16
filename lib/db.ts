@@ -10,4 +10,26 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
+export function isPrismaDbConnectionError(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P1001') {
+    return true
+  }
+
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const message = error.message.toLowerCase()
+  return (
+    message.includes("can't reach database server") ||
+    message.includes('cant reach database server') ||
+    message.includes('failed to connect') ||
+    (message.includes('database server') && message.includes('timeout'))
+  )
+}
+
 export { Prisma }

@@ -27,9 +27,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     // User isolation: Only allow access to invoices owned by the user
     const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = session?.user?.id;
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const invoice = await prisma.invoice.findUnique({
-      where: { id: Number(id), ownerUserId: session.user.id },
+      where: { id: Number(id), ownerUserId: userId },
       include: { items: true },
     });
     if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -51,9 +52,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // User isolation: Only allow access to invoices owned by the user
     const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = session?.user?.id;
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const existingBase = await prisma.invoice.findUnique({
-      where: { id: invoiceId, ownerUserId: session.user.id },
+      where: { id: invoiceId, ownerUserId: userId },
       select: { amountPaid: true, dueDate: true },
     });
     if (!existingBase) {
@@ -294,13 +296,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = session?.user?.id;
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
 
     // Ensure the invoice belongs to the user before deleting
     const existing = await prisma.invoice.findUnique({
-      where: { id: Number(id), ownerUserId: session.user.id }
+      where: { id: Number(id), ownerUserId: userId }
     });
 
     if (!existing) {
@@ -319,13 +322,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = session?.user?.id;
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
     const data = await req.json();
 
     const invoice = await prisma.invoice.update({
-      where: { id: Number(id), ownerUserId: session.user.id },
+      where: { id: Number(id), ownerUserId: userId },
       data: data,
     });
     return NextResponse.json(invoice);

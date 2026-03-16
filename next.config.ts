@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
       allowedOrigins: ["172.16.104.66:3000", "localhost:3000"],
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

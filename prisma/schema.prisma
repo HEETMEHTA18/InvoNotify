@@ -127,6 +127,7 @@ model Invoice {
   @@index([clientEmail, clientName])
   @@index([autoReminderEnabled, dueDate, status])
   @@index([ownerUserId])
+  @@index([userId])
 }
 
 model InvoiceItem {
@@ -164,6 +165,7 @@ model Customer {
   invoices         Invoice[]
 
   @@index([ownerUserId])
+  @@index([ownerUserId, name])
   @@unique([name, ownerUserId])
 }
 

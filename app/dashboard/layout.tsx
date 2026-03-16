@@ -3,18 +3,10 @@ import Link from "next/link";
 import { User, LogOut, LayoutDashboard, FileText, Menu } from "lucide-react";
 import { requireUser } from "@/lib/hooks";
 import { DashboardLinks } from "./DashboardLink";
-import { signOut } from "@/lib/auth";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { DashboardSidebar } from "./components/DashboardSidebar";
+import { UserNav } from "./components/UserNav";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     const session = await requireUser();
@@ -50,53 +42,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
                         </Link>
                     </div>
 
-                    <div className="flex items-center ml-auto">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 hover:bg-gray-50 transition-colors">
-                                    <User className="h-5 w-5 text-gray-600" />
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
-                                        <LayoutDashboard className="h-4 w-4" />
-                                        Dashboard
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href="/dashboard/invoices" className="flex items-center gap-2 cursor-pointer">
-                                        <FileText className="h-4 w-4" />
-                                        Invoices
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href="/dashboard/profile" className="flex items-center gap-2 cursor-pointer">
-                                        <User className="h-4 w-4" />
-                                        Profile
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <form
-                                        action={async () => {
-                                            "use server";
-                                            await signOut();
-                                        }}
-                                    >
-                                        <button type="submit" className="flex items-center gap-2 w-full text-left">
-                                            <LogOut className="h-4 w-4" />
-                                            Log out
-                                        </button>
-                                    </form>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                    <div className="flex items-center ml-auto gap-4">
+                        <UserNav />
                     </div>
                 </header>
-                <main className="flex-1 bg-gray-50 overflow-y-auto">
+                <main className="flex-1 bg-gray-50 overflow-y-auto p-4 md:p-6 lg:p-8">
                     {children}
                 </main>
             </div>

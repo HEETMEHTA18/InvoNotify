@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, Prisma } from "@/lib/db";
+import { prisma, Prisma, isPrismaDbConnectionError } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 // Helper to get a numeric invoice amount
@@ -72,6 +72,9 @@ export async function GET(req: NextRequest) {
         const weekStart = new Date(todayStart);
         weekStart.setDate(weekStart.getDate() - 6);
         const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+
+        // Fail fast when DB is unreachable instead of triggering many concurrent query failures.
+        await prisma.$queryRaw`SELECT 1`;
 
         const [
             aggregations,
@@ -179,30 +182,42 @@ export async function GET(req: NextRequest) {
             .filter(([_, value]) => value > 0)
             .map(([name, value]) => ({ name, value }));
 
-        const highRiskCustomers = await Promise.all(
-            (highRiskGroups as HighRiskGroupRow[]).map(async (group) => {
-                const latestInvoice = await prisma.invoice.findFirst({
-                    where: {
-                        status: { in: ["Pending", "Draft"] },
-                        dueDate: { lt: now },
-                        clientName: group.clientName ?? "",
-                        clientEmail: group.clientEmail ?? "",
-                        userId,
-                    },
-                    orderBy: { date: "desc" },
-                    select: { id: true, date: true },
-                });
+        // Efficiently fetch high risk customers using a single batch query for latest invoices
+        const highRiskCustomersData = highRiskGroups as HighRiskGroupRow[];
+        const customerIdentifiers = highRiskCustomersData.map(g => ({
+            name: g.clientName || "",
+            email: g.clientEmail || ""
+        })).filter(c => c.name !== "" || c.email !== "");
 
-                return {
-                    name: group.clientName || "Unknown",
-                    email: group.clientEmail || "",
-                    totalOverdue: Number(group.total_overdue ?? 0),
-                    count: Number(group.invoice_count),
-                    lastInvoiceDate: latestInvoice?.date ?? null,
-                    lastInvoiceId: latestInvoice?.id ?? null,
-                };
-            })
-        );
+        // Find latest invoices for all high-risk clients at once to avoid N+1 problem
+        const latestInvoices = await prisma.invoice.findMany({
+            where: {
+                userId,
+                status: { in: ["Pending", "Draft"] },
+                dueDate: { lt: now },
+                OR: customerIdentifiers.map(c => ({
+                    clientName: c.name,
+                    clientEmail: c.email
+                }))
+            },
+            orderBy: { date: "desc" },
+            distinct: ["clientName", "clientEmail"],
+            select: { id: true, date: true, clientName: true, clientEmail: true },
+        });
+
+        const highRiskCustomers = highRiskCustomersData.map(group => {
+            const latest = latestInvoices.find(li => 
+                li.clientName === group.clientName && li.clientEmail === group.clientEmail
+            );
+            return {
+                name: group.clientName || "Unknown",
+                email: group.clientEmail || "",
+                totalOverdue: Number(group.total_overdue ?? 0),
+                count: Number(group.invoice_count),
+                lastInvoiceDate: latest?.date ?? null,
+                lastInvoiceId: latest?.id ?? null,
+            };
+        });
 
         const recentActivity = (recentInvoicesRaw as any[]).map((inv: any) => {
             let status = inv.status;
@@ -289,6 +304,12 @@ export async function GET(req: NextRequest) {
         );
     } catch (error) {
         console.error("Dashboard Stats Error:", error);
+        if (isPrismaDbConnectionError(error)) {
+            return NextResponse.json(
+                { error: "Database is temporarily unavailable. Please try again shortly." },
+                { status: 503 }
+            );
+        }
         return NextResponse.json({ error: "Failed to fetch dashboard stats" }, { status: 500 });
     }
 }

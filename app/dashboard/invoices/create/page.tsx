@@ -500,9 +500,43 @@ function CreateInvoiceContent() {
   const total = Math.max(0, subtotal - discount + taxAmount);
   const sym = currencySymbols[currency] || "$";
 
-  function generatePDF(): jsPDF {
+  // Convert an image URL (Cloudinary or any HTTP) to a base64 data URL
+  function imageUrlToBase64(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      // If already a data URL, return as-is
+      if (url.startsWith("data:")) {
+        resolve(url);
+        return;
+      }
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Canvas context failed")); return; }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = url;
+    });
+  }
+
+  async function generatePDF(): Promise<jsPDF> {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Pre-convert Cloudinary URLs to base64 for jsPDF
+    let logoBase64: string | null = null;
+    let signatureBase64: string | null = null;
+    try {
+      if (settings.logo) logoBase64 = await imageUrlToBase64(settings.logo);
+    } catch { /* Logo could not be loaded */ }
+    try {
+      if (settings.signature) signatureBase64 = await imageUrlToBase64(settings.signature);
+    } catch { /* Signature could not be loaded */ }
 
     // Template Colors & Styles
     const styles = {
@@ -544,9 +578,9 @@ function CreateInvoiceContent() {
 
     // Company logo
     let logoY = 8;
-    if (settings.logo) {
+    if (logoBase64) {
       try {
-        doc.addImage(settings.logo, "PNG", 14, logoY, 35, 35);
+        doc.addImage(logoBase64, "PNG", 14, logoY, 35, 35);
       } catch { /* Logo could not be added */ }
     }
 
@@ -731,14 +765,14 @@ function CreateInvoiceContent() {
     }
 
     // Signature
-    if (settings.signature) {
+    if (signatureBase64) {
       y += 20;
       doc.setFontSize(9);
       doc.setTextColor(113, 128, 150);
       doc.text("AUTHORIZED SIGNATURE", 14, y);
       y += 5;
       try {
-        doc.addImage(settings.signature, "PNG", 14, y, 50, 25);
+        doc.addImage(signatureBase64, "PNG", 14, y, 50, 25);
       } catch {
         // Signature could not be added
       }
@@ -753,16 +787,16 @@ function CreateInvoiceContent() {
     return doc;
   }
 
-  function handlePreview() {
-    const doc = generatePDF();
+  async function handlePreview() {
+    const doc = await generatePDF();
     const blob = doc.output("blob");
     const url = URL.createObjectURL(blob);
     setPdfUrl(url);
     setShowPreview(true);
   }
 
-  function handleDownload() {
-    const doc = generatePDF();
+  async function handleDownload() {
+    const doc = await generatePDF();
     doc.save(`${invoiceNumber}.pdf`);
   }
 
@@ -851,7 +885,7 @@ function CreateInvoiceContent() {
     setError("");
 
     try {
-      const doc = generatePDF();
+      const doc = await generatePDF();
       const pdfBase64 = doc.output("datauristring").split(",")[1];
 
       const res = await fetch(`/api/invoices/${createdInvoiceId}/send`, {

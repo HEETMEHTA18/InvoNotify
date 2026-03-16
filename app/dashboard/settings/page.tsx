@@ -20,6 +20,7 @@ export default function SettingsPage() {
     const [signature, setSignature] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
 
@@ -50,6 +51,30 @@ export default function SettingsPage() {
         }
     }
 
+    async function uploadToCloudinary(base64: string): Promise<string | null> {
+        try {
+            setUploading(true);
+            setError("");
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: base64 }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                setError(err.error || "Failed to upload image");
+                return null;
+            }
+            const data = await res.json();
+            return data.url;
+        } catch {
+            setError("Failed to upload image");
+            return null;
+        } finally {
+            setUploading(false);
+        }
+    }
+
     function handleFileUpload(
         e: React.ChangeEvent<HTMLInputElement>,
         setter: (val: string | null) => void
@@ -63,9 +88,13 @@ export default function SettingsPage() {
         }
 
         const reader = new FileReader();
-        reader.onload = () => {
-            setter(reader.result as string);
-            setSuccess(false);
+        reader.onload = async () => {
+            const base64 = reader.result as string;
+            const url = await uploadToCloudinary(base64);
+            if (url) {
+                setter(url);
+                setSuccess(false);
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -143,13 +172,16 @@ export default function SettingsPage() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    function saveSignatureFromCanvas() {
+    async function saveSignatureFromCanvas() {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const dataUrl = canvas.toDataURL("image/png");
-        setSignature(dataUrl);
-        setShowDrawPad(false);
-        setSuccess(false);
+        const url = await uploadToCloudinary(dataUrl);
+        if (url) {
+            setSignature(url);
+            setShowDrawPad(false);
+            setSuccess(false);
+        }
     }
 
     async function handleSave() {
@@ -252,6 +284,12 @@ export default function SettingsPage() {
                 <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4" />
                     Settings saved successfully!
+                </div>
+            )}
+            {uploading && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading image to cloud...
                 </div>
             )}
 
