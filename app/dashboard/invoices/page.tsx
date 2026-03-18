@@ -208,11 +208,18 @@ export default function InvoicesPage() {
 
   async function handleMarkPaid(inv: Invoice) {
     try {
-      await fetch(`/api/invoices/${inv.id}`, {
+      const res = await fetch(`/api/invoices/${inv.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Paid" }),
       });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to update invoice");
+        return;
+      }
+
       fetchInvoices();
     } catch {
       setError("Failed to update invoice");

@@ -29,13 +29,56 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const invoice = await prisma.invoice.findFirst({
-      where: {
-        id: Number(id),
-        OR: [{ ownerUserId: userId }, { userId }],
-      },
-      include: { items: true },
-    });
+    let invoice;
+    try {
+      invoice = await prisma.invoice.findFirst({
+        where: {
+          id: Number(id),
+          OR: [{ ownerUserId: userId }, { userId }],
+        },
+        include: { items: true },
+      });
+    } catch (error) {
+      if (!isReminderSchemaMismatch(error)) throw error;
+      invoice = await prisma.invoice.findFirst({
+        where: { id: Number(id), userId },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          clientName: true,
+          clientEmail: true,
+          clientAddress: true,
+          senderName: true,
+          senderEmail: true,
+          senderAddress: true,
+          total: true,
+          subtotal: true,
+          status: true,
+          date: true,
+          dueDate: true,
+          currency: true,
+          note: true,
+          customer: true,
+          amount: true,
+          amountPaid: true,
+          balance: true,
+          discount: true,
+          taxRate: true,
+          gstType: true,
+          template: true,
+          items: {
+            select: {
+              id: true,
+              description: true,
+              hsnCode: true,
+              quantity: true,
+              rate: true,
+              amount: true,
+            },
+          },
+        },
+      });
+    }
     if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(invoice);
   } catch (error) {
@@ -57,13 +100,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const existingBase = await prisma.invoice.findFirst({
-      where: {
-        id: invoiceId,
-        OR: [{ ownerUserId: userId }, { userId }],
-      },
-      select: { amountPaid: true, dueDate: true },
-    });
+    let existingBase;
+    try {
+      existingBase = await prisma.invoice.findFirst({
+        where: {
+          id: invoiceId,
+          OR: [{ ownerUserId: userId }, { userId }],
+        },
+        select: { amountPaid: true, dueDate: true },
+      });
+    } catch (error) {
+      if (!isReminderSchemaMismatch(error)) throw error;
+      existingBase = await prisma.invoice.findFirst({
+        where: { id: invoiceId, userId },
+        select: { amountPaid: true, dueDate: true },
+      });
+    }
     if (!existingBase) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
@@ -219,13 +271,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       };
     }
 
-    let invoice;
+    const primaryWhere = {
+      id: invoiceId,
+      OR: [{ ownerUserId: userId }, { userId }],
+    };
+    const legacyWhere = { id: invoiceId, userId };
+
+    let invoice: any;
     try {
       const updated = await prisma.invoice.updateMany({
-        where: {
-          id: invoiceId,
-          OR: [{ ownerUserId: userId }, { userId }],
-        },
+        where: primaryWhere,
         data: updateData as any,
       });
 
@@ -233,10 +288,33 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         return NextResponse.json({ error: "Invoice not found or unauthorized" }, { status: 404 });
       }
 
-      invoice = await prisma.invoice.findUnique({
-        where: { id: invoiceId },
-        include: { items: true },
-      });
+      try {
+        invoice = await prisma.invoice.findUnique({
+          where: { id: invoiceId },
+          include: { items: true },
+        });
+      } catch (error) {
+        if (!isReminderSchemaMismatch(error)) throw error;
+        invoice = await prisma.invoice.findFirst({
+          where: legacyWhere,
+          select: {
+            id: true,
+            invoiceNumber: true,
+            status: true,
+            dueDate: true,
+            items: {
+              select: {
+                id: true,
+                description: true,
+                hsnCode: true,
+                quantity: true,
+                rate: true,
+                amount: true,
+              },
+            },
+          },
+        });
+      }
     } catch (error) {
       if (!isReminderSchemaMismatch(error)) throw error;
 
@@ -250,10 +328,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       delete fallbackData.clientPhone;
 
       const updated = await prisma.invoice.updateMany({
-        where: {
-          id: invoiceId,
-          OR: [{ ownerUserId: userId }, { userId }],
-        },
+        where: legacyWhere,
         data: fallbackData,
       });
 
@@ -261,9 +336,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         return NextResponse.json({ error: "Invoice not found or unauthorized" }, { status: 404 });
       }
 
-      invoice = await prisma.invoice.findUnique({
-        where: { id: invoiceId },
-        include: { items: true },
+      invoice = await prisma.invoice.findFirst({
+        where: legacyWhere,
+        select: {
+          id: true,
+          invoiceNumber: true,
+          status: true,
+          dueDate: true,
+          items: {
+            select: {
+              id: true,
+              description: true,
+              hsnCode: true,
+              quantity: true,
+              rate: true,
+              amount: true,
+            },
+          },
+        },
       });
     }
 
@@ -272,7 +362,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Immediate reminder check
-    if (invoice.autoReminderEnabled && invoice.dueDate && invoice.status !== "Paid") {
+    if (reminderFieldsSupported && invoice.autoReminderEnabled && invoice.dueDate && invoice.status !== "Paid") {
       const { getReminderMatchForDate } = await import("@/lib/reminders");
       const { sendInvoiceReminderById } = await import("@/lib/mail-service");
 
@@ -335,12 +425,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { id } = await params;
 
     // Ensure the invoice belongs to the user before deleting
-    const existing = await prisma.invoice.findFirst({
-      where: {
-        id: Number(id),
-        OR: [{ ownerUserId: userId }, { userId }],
-      }
-    });
+    let existing;
+    try {
+      existing = await prisma.invoice.findFirst({
+        where: {
+          id: Number(id),
+          OR: [{ ownerUserId: userId }, { userId }],
+        }
+      });
+    } catch (error) {
+      if (!isReminderSchemaMismatch(error)) throw error;
+      existing = await prisma.invoice.findFirst({
+        where: { id: Number(id), userId },
+      });
+    }
 
     if (!existing) {
       return NextResponse.json({ error: "Invoice not found or unauthorized" }, { status: 404 });
@@ -364,13 +462,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const data = await req.json();
 
-    const updateResult = await prisma.invoice.updateMany({
-      where: {
-        id: Number(id),
-        OR: [{ ownerUserId: userId }, { userId }],
-      },
-      data,
-    });
+    let updateResult;
+    try {
+      updateResult = await prisma.invoice.updateMany({
+        where: {
+          id: Number(id),
+          OR: [{ ownerUserId: userId }, { userId }],
+        },
+        data,
+      });
+    } catch (error) {
+      if (!isReminderSchemaMismatch(error)) throw error;
+      updateResult = await prisma.invoice.updateMany({
+        where: { id: Number(id), userId },
+        data,
+      });
+    }
 
     if (updateResult.count === 0) {
       return NextResponse.json({ error: "Invoice not found or unauthorized" }, { status: 404 });
