@@ -19,7 +19,7 @@ jobs:
 
       - name: Trigger Reminders via API
         env:
-          SITE_URL: ${{ secrets.SITE_URL || 'invonotify.vercel.aoo' }}
+          SITE_URL: ${{ secrets.SITE_URL || 'invonotify.vercel.app' }}
           REMINDER_CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           NORMALIZED_SITE_URL="${SITE_URL%/}"
@@ -68,7 +68,7 @@ jobs:
       - name: Notify on failure
         if: failure()
         env:
-          SITE_URL: ${{ secrets.SITE_URL || 'invonotify.vercel.aoo' }}
+          SITE_URL: ${{ secrets.SITE_URL || 'invonotify.vercel.app' }}
         run: |
           TARGET_URL="${SITE_URL%/}/api/reminders/auto"
           echo "::error::Daily reminder job failed. Check the API logs at ${TARGET_URL}"
