@@ -12,6 +12,7 @@ import {
     PenTool,
     Building2,
     AlertTriangle,
+    QrCode,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -22,6 +23,8 @@ export default function SettingsPage() {
     const [companyEmail, setCompanyEmail] = useState("");
     const [companyPhone, setCompanyPhone] = useState("");
     const [companyAddress, setCompanyAddress] = useState("");
+    const [paymentQrEnabled, setPaymentQrEnabled] = useState(false);
+    const [paymentQrPayload, setPaymentQrPayload] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -51,6 +54,8 @@ export default function SettingsPage() {
                 setCompanyEmail(data.email || "");
                 setCompanyPhone(data.phone || "");
                 setCompanyAddress(data.address || "");
+                setPaymentQrEnabled(Boolean(data.paymentQrEnabled));
+                setPaymentQrPayload(data.paymentQrPayload || "");
             }
         } catch {
             // Settings not found
@@ -208,6 +213,8 @@ export default function SettingsPage() {
                     email: companyEmail,
                     phone: companyPhone,
                     address: companyAddress,
+                    paymentQrEnabled,
+                    paymentQrPayload,
                 }),
             });
 
@@ -575,6 +582,44 @@ export default function SettingsPage() {
                             setShowDrawPad(false);
                         }}
                     />
+                </div>
+            </div>
+
+            {/* Payment QR Section */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+                <div className="p-6 border-b border-gray-100 flex items-center gap-3">
+                    <QrCode className="h-5 w-5 text-gray-500" />
+                    <div>
+                        <h2 className="text-base font-semibold text-gray-900">Payment QR</h2>
+                        <p className="text-xs text-gray-500">
+                            Add your bank/UPI QR payload once. Invoice PDFs will auto-set the invoice amount.
+                        </p>
+                    </div>
+                </div>
+                <div className="p-6 space-y-4">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                            type="checkbox"
+                            checked={paymentQrEnabled}
+                            onChange={(e) => setPaymentQrEnabled(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                        />
+                        Enable QR code on invoice PDF
+                    </label>
+
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">Base QR Payload</label>
+                        <textarea
+                            value={paymentQrPayload}
+                            onChange={(e) => setPaymentQrPayload(e.target.value)}
+                            placeholder="Example: upi://pay?pa=merchant@bank&pn=Your%20Business&cu=INR"
+                            rows={4}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            Tip: Paste the raw UPI QR payload. We automatically inject the amount and invoice reference.
+                        </p>
+                    </div>
                 </div>
             </div>
 

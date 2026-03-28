@@ -44,15 +44,15 @@ export function InvoiceList({ invoices, onEdit, onDelete, onMarkPaid, onReminder
   return (
     <div className="w-full">
       {/* Mobile View: Cards */}
-      <div className="lg:hidden space-y-4 px-4 pb-6">
+      <div className="lg:hidden space-y-3 px-2 pb-4">
         {invoices.map((inv: any) => (
-          <div key={inv.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm relative group transition-all hover:border-gray-300">
+          <div key={inv.id} className="bg-white rounded-xl border border-gray-200 p-3.5 shadow-sm relative group transition-all hover:border-gray-300">
             <div className="flex justify-between items-start mb-3">
               <div>
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                   {inv.invoiceNumber || `#${inv.id}`}
                 </span>
-                <h3 className="text-sm font-bold text-gray-900 mt-0.5 truncate max-w-[180px]">
+                <h3 className="text-sm font-bold text-gray-900 mt-0.5 truncate max-w-40 sm:max-w-55">
                   {inv.clientName || inv.customer || "Unknown Client"}
                 </h3>
               </div>
@@ -116,7 +116,7 @@ export function InvoiceList({ invoices, onEdit, onDelete, onMarkPaid, onReminder
               <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total</th>
               <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-widest">Balance</th>
               <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Dates</th>
+              <th className="px-6 py-4 text-center text-[10px] font-bold text-gray-500 uppercase tracking-widest">Dates</th>
               <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-500 uppercase tracking-widest">Actions</th>
             </tr>
           </thead>

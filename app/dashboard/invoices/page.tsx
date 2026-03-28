@@ -356,7 +356,7 @@ export default function InvoicesPage() {
         return;
       }
 
-      generateInvoicePDF(invoiceData, settingsData);
+      await generateInvoicePDF(invoiceData, settingsData);
     } catch (e) {
       console.error("PDF generation error:", e);
       alert("Failed to generate PDF");
@@ -373,9 +373,9 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-6 px-4 md:px-6">
+    <div className="max-w-6xl mx-auto py-4 sm:py-6 px-2 sm:px-4 md:px-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:gap-4 mb-5 sm:mb-6">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
             <FileText className="h-5 w-5 text-gray-900" />
@@ -385,7 +385,7 @@ export default function InvoicesPage() {
             <p className="text-sm text-gray-500">Manage and track all your invoices</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0">
           <input
             type="file"
             accept=".yml,.yaml,.json"
@@ -409,7 +409,7 @@ export default function InvoicesPage() {
           />
           <Button
             onClick={() => tallyFileInputRef.current?.click()}
-            className="bg-white border border-gray-200 text-purple-600 hover:bg-purple-50 font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm"
+            className="hidden md:inline-flex bg-white border border-gray-200 text-purple-600 hover:bg-purple-50 font-medium px-4 py-2.5 rounded-lg items-center gap-2 shadow-sm shrink-0"
             disabled={isLoading}
           >
             <FileText className="h-4 w-4" />
@@ -417,7 +417,7 @@ export default function InvoicesPage() {
           </Button>
           <Button
             onClick={() => customerFileInputRef.current?.click()}
-            className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm"
+            className="hidden md:inline-flex bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium px-4 py-2.5 rounded-lg items-center gap-2 shadow-sm shrink-0"
             disabled={isLoading}
           >
             <FileText className="h-4 w-4" />
@@ -425,27 +425,27 @@ export default function InvoicesPage() {
           </Button>
           <Button
             onClick={handleRunAutoReminders}
-            className="bg-white border border-gray-200 text-amber-600 hover:bg-amber-50 font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm"
+            className="bg-white border border-gray-200 text-amber-600 hover:bg-amber-50 font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm shrink-0"
             disabled={isLoading}
             title="Scan all invoices and send reminders based on settings"
           >
             <AlertTriangle className="h-4 w-4" />
-            Run Reminders
+            <span className="whitespace-nowrap">Run Reminders</span>
           </Button>
           <Button
             onClick={() => fileInputRef.current?.click()}
-            className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm"
+            className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm shrink-0"
             disabled={isLoading}
           >
             <FileText className="h-4 w-4" />
-            Import Invoices
+            <span className="whitespace-nowrap">Import Invoices</span>
           </Button>
           <Button
             onClick={() => router.push("/dashboard/invoices/create")}
-            className="bg-gray-900 hover:bg-gray-800 text-white font-medium px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm"
+            className="bg-gray-900 hover:bg-gray-800 text-white font-medium px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-sm shrink-0"
           >
             <Plus className="h-4 w-4" />
-            Create Invoice
+            <span className="whitespace-nowrap">Create Invoice</span>
           </Button>
         </div>
       </div>
@@ -517,6 +517,7 @@ export default function InvoicesPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
+              suppressHydrationWarning
               type="text"
               placeholder="Search by client name, email, or invoice number..."
               value={search}
@@ -525,12 +526,13 @@ export default function InvoicesPage() {
             />
           </div>
           {/* Status filter */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
             {["all", "Pending", "Paid", "Overdue"].map((status) => (
               <button
+                suppressHydrationWarning
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === status
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${statusFilter === status
                   ? "bg-gray-900 text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
@@ -541,6 +543,7 @@ export default function InvoicesPage() {
           </div>
           {/* Refresh */}
           <button
+            suppressHydrationWarning
             onClick={() => fetchInvoices({ reset: true })}
             disabled={isLoading}
             className="p-2.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all disabled:opacity-50"
@@ -555,7 +558,7 @@ export default function InvoicesPage() {
           <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" /> {error}
             <button
-              onClick={fetchInvoices}
+              onClick={() => fetchInvoices({ reset: true })}
               className="ml-auto text-red-600 hover:text-red-800 underline text-xs"
             >
               Retry
@@ -564,35 +567,54 @@ export default function InvoicesPage() {
         )}
 
         {isLoading && invoices.length === 0 ? (
-          // Skeleton table rows
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {["Invoice", "Client", "Total", "Balance", "Status", "Date", "Due Date", "Actions"].map((h) => (
-                    <th key={h} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {[...Array(6)].map((_, i) => (
-                  <tr key={i}>
-                    <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-6 py-4">
-                      <Skeleton className="h-4 w-32 mb-1.5" />
-                      <Skeleton className="h-3 w-24" />
-                    </td>
-                    <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-8 w-24 rounded-lg" /></td>
+          <>
+            <div className="lg:hidden space-y-3 px-3 pb-5">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                  <div className="flex justify-between items-center mb-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-36 mb-2" />
+                  <Skeleton className="h-3 w-28 mb-3" />
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-20 ml-auto" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-24 ml-auto" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {["Invoice", "Client", "Total", "Balance", "Status", "Date", "Due Date", "Actions"].map((h) => (
+                      <th key={h} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[...Array(6)].map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-4 w-32 mb-1.5" />
+                        <Skeleton className="h-3 w-24" />
+                      </td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-8 w-24 rounded-lg" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="overflow-x-auto">
             <InvoiceList

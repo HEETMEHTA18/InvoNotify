@@ -1,5 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
+import { buildPaymentPayload } from "@/lib/payment-qr";
 
 // Define interface for Invoice to avoid any type errors
 interface InvoiceItem {
@@ -32,12 +34,71 @@ interface Invoice {
 interface CompanySettings {
     logo: string | null;
     signature: string | null;
+    paymentQrEnabled?: boolean;
+    paymentQrPayload?: string | null;
 }
 
-export const getInvoicePDFDoc = (invoice: Invoice, settings?: CompanySettings) => {
+type PdfImageFormat = "PNG" | "JPEG" | "WEBP";
+
+function inferImageFormat(value: string) {
+    const source = value.toLowerCase();
+    if (
+        source.includes("image/jpeg") ||
+        source.includes("image/jpg") ||
+        source.includes(".jpg") ||
+        source.includes(".jpeg")
+    ) {
+        return "JPEG" as PdfImageFormat;
+    }
+    if (source.includes("image/webp") || source.includes(".webp")) {
+        return "WEBP" as PdfImageFormat;
+    }
+    return "PNG" as PdfImageFormat;
+}
+
+async function resolveImageForPdf(source: string | null | undefined) {
+    const input = String(source || "").trim();
+    if (!input) return null;
+
+    // Data URLs are already compatible with jsPDF in both browser and node runtimes.
+    if (input.startsWith("data:image/")) {
+        return {
+            imageData: input,
+            format: inferImageFormat(input),
+        };
+    }
+
+    // In server runtime, jsPDF may try local fs access for raw URLs. Convert remote URLs to data URLs first.
+    if (typeof window === "undefined" && /^https?:\/\//i.test(input)) {
+        try {
+            const response = await fetch(input);
+            if (!response.ok) return null;
+
+            const contentType = response.headers.get("content-type") || "image/png";
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            const dataUrl = `data:${contentType};base64,${base64}`;
+
+            return {
+                imageData: dataUrl,
+                format: inferImageFormat(contentType),
+            };
+        } catch {
+            return null;
+        }
+    }
+
+    return {
+        imageData: input,
+        format: inferImageFormat(input),
+    };
+}
+
+export const getInvoicePDFDoc = async (invoice: Invoice, settings?: CompanySettings) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.height;
+    let hasLogo = false;
 
     // Helper to format date safely
     const safeFormatDate = (dateString: string | null | undefined) => {
@@ -58,7 +119,11 @@ export const getInvoicePDFDoc = (invoice: Invoice, settings?: CompanySettings) =
     // --- Logo ---
     if (settings?.logo) {
         try {
-            doc.addImage(settings.logo, "PNG", 14, 10, 30, 30);
+            const logoImage = await resolveImageForPdf(settings.logo);
+            if (logoImage) {
+                doc.addImage(logoImage.imageData, logoImage.format, 14, 10, 30, 30);
+                hasLogo = true;
+            }
         } catch (e) {
             console.warn("Could not add logo to PDF", e);
         }
@@ -81,7 +146,7 @@ export const getInvoicePDFDoc = (invoice: Invoice, settings?: CompanySettings) =
     addText(status.toUpperCase(), pageWidth - 14, 32, { align: "right" });
 
     // --- Sender Details ---
-    const senderStartY = settings?.logo ? 45 : 20;
+    const senderStartY = hasLogo ? 45 : 20;
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
@@ -204,7 +269,10 @@ export const getInvoicePDFDoc = (invoice: Invoice, settings?: CompanySettings) =
         doc.text("AUTHORIZED SIGNATURE", 14, finalY);
 
         try {
-            doc.addImage(settings.signature, "PNG", 14, finalY + 5, 40, 20);
+            const signatureImage = await resolveImageForPdf(settings.signature);
+            if (signatureImage) {
+                doc.addImage(signatureImage.imageData, signatureImage.format, 14, finalY + 5, 40, 20);
+            }
         } catch (e) {
             console.warn("Could not add signature to PDF", e);
         }
@@ -212,6 +280,35 @@ export const getInvoicePDFDoc = (invoice: Invoice, settings?: CompanySettings) =
         finalY += 30;
         doc.setDrawColor(45, 55, 72);
         doc.line(14, finalY, 80, finalY);
+    }
+
+    if (settings?.paymentQrEnabled && settings.paymentQrPayload) {
+        try {
+            const amountValue = Number.parseFloat(String(invoice.total || invoice.amount || "0").replace(/,/g, ""));
+            const normalizedAmount = Number.isFinite(amountValue) ? Math.max(0, amountValue).toFixed(2) : "0.00";
+            const payload = buildPaymentPayload(settings.paymentQrPayload, normalizedAmount, invoice.invoiceNumber);
+
+            if (payload) {
+                const qrDataUrl = await QRCode.toDataURL(payload, {
+                    width: 180,
+                    margin: 1,
+                    errorCorrectionLevel: "M",
+                });
+
+                const qrSize = 38;
+                const qrY = Math.min(pageHeight - 55, Math.max(20, finalY + 8));
+                const qrX = pageWidth - 14 - qrSize;
+
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text("Scan to pay", qrX + qrSize / 2, qrY - 2, { align: "center" });
+                doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+                doc.setFontSize(8);
+                doc.text(`Amount: ${invoice.currency || "INR"} ${normalizedAmount}`, qrX + qrSize / 2, qrY + qrSize + 4, { align: "center" });
+            }
+        } catch (e) {
+            console.warn("Could not add payment QR to PDF", e);
+        }
     }
 
     // --- Footer ---
@@ -222,12 +319,12 @@ export const getInvoicePDFDoc = (invoice: Invoice, settings?: CompanySettings) =
     return doc;
 };
 
-export const generateInvoicePDF = (invoice: Invoice, settings?: CompanySettings) => {
-    const doc = getInvoicePDFDoc(invoice, settings);
+export const generateInvoicePDF = async (invoice: Invoice, settings?: CompanySettings) => {
+    const doc = await getInvoicePDFDoc(invoice, settings);
     doc.save(`invoice-${invoice.invoiceNumber || invoice.id}.pdf`);
 };
 
-export const generateInvoicePDFBuffer = (invoice: Invoice, settings?: CompanySettings): Uint8Array => {
-    const doc = getInvoicePDFDoc(invoice, settings);
+export const generateInvoicePDFBuffer = async (invoice: Invoice, settings?: CompanySettings): Promise<Uint8Array> => {
+    const doc = await getInvoicePDFDoc(invoice, settings);
     return new Uint8Array(doc.output("arraybuffer"));
 };

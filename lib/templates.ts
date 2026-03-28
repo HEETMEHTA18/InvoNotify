@@ -12,6 +12,8 @@ export interface InvoiceTemplateData {
   reminderTitle?: string;
   reminderBadge?: string;
   isOverdue?: boolean;
+  paymentQrDataUrl?: string | null;
+  paymentQrAmount?: string;
 }
 
 export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
@@ -26,7 +28,9 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
     currency,
     reminderTitle,
     reminderBadge,
-    isOverdue
+    isOverdue,
+    paymentQrDataUrl,
+    paymentQrAmount,
   } = data;
 
   const message = isOverdue
@@ -140,19 +144,22 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
       text-align: center;
       line-height: 1.6;
     }
-    .button-container {
-      margin-top: 10px;
+    .qr-container {
+      margin-top: 18px;
       text-align: center;
     }
-    .pay-button {
-      background-color: ${isOverdue ? "#ef4444" : "#111827"};
-      color: #ffffff !important;
-      text-decoration: none;
-      padding: 10px 24px;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 600;
+    .qr-image-wrap {
       display: inline-block;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px;
+      background: #ffffff;
+    }
+    .qr-label {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #6b7280;
+      font-weight: 600;
     }
   </style>
 </head>
@@ -197,10 +204,14 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
           <td class="value"><a href="#" class="value-link">${data.senderName} Portal</a></td>
         </tr>
       </table>
-      <div class="button-container">
-         <br/>
-         <a href="#" class="pay-button">Pay Securely Now</a>
-      </div>
+      ${paymentQrDataUrl
+      ? `<div class="qr-container">
+           <div class="qr-image-wrap">
+             <img src="${paymentQrDataUrl}" alt="Payment QR" width="150" height="150" style="display:block;" />
+           </div>
+           <div class="qr-label">Scan to pay ${currency} ${paymentQrAmount || amountDue}</div>
+         </div>`
+      : ""}
     </div>
 
     <!-- Support Footer -->

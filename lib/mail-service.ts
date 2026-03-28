@@ -4,6 +4,9 @@ import { generateInvoicePDFBuffer } from "@/lib/pdf";
 import { getInvoiceReminderTemplate } from "@/lib/templates";
 import { sendSMS } from "@/lib/sms";
 import { sendTelegramMessage } from "@/lib/telegram";
+import QRCode from "qrcode";
+import { buildPaymentPayload, isValidPaymentPayload } from "@/lib/payment-qr";
+import { getFallbackQrPayloadFromCodebase } from "@/lib/bank-qr-fallback";
 import {
   ReminderChannel,
   ReminderType,
@@ -72,7 +75,7 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
     })),
   };
 
-  const pdfBuffer = generateInvoicePDFBuffer(
+  const pdfBuffer = await generateInvoicePDFBuffer(
     formattedInvoice as unknown as Parameters<typeof generateInvoicePDFBuffer>[0],
     companySettings || undefined
   );
@@ -85,6 +88,27 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
   });
 
   const tone = getReminderTone(params.reminderType);
+  const normalizedAmount = Math.max(0, Number(invoice.balance)).toFixed(2);
+  const basePaymentPayload = isValidPaymentPayload(companySettings?.paymentQrPayload)
+    ? companySettings!.paymentQrPayload!.trim()
+    : await getFallbackQrPayloadFromCodebase();
+  const effectivePaymentPayload = basePaymentPayload
+    ? buildPaymentPayload(basePaymentPayload, normalizedAmount, invoice.invoiceNumber)
+    : "";
+
+  let paymentQrDataUrl: string | null = null;
+  if (effectivePaymentPayload) {
+    try {
+      paymentQrDataUrl = await QRCode.toDataURL(effectivePaymentPayload, {
+        width: 220,
+        margin: 1,
+        errorCorrectionLevel: "M",
+      });
+    } catch {
+      paymentQrDataUrl = null;
+    }
+  }
+
   const body = getInvoiceReminderTemplate({
     clientName: invoice.clientName || "Valued Customer",
     invoiceNumber: invoice.invoiceNumber,
@@ -97,6 +121,8 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
     reminderTitle: tone.title,
     reminderBadge: tone.badge,
     isOverdue: params.reminderType === "OVERDUE_REPEAT",
+    paymentQrDataUrl,
+    paymentQrAmount: normalizedAmount,
   });
 
   const attachmentName = `invoice-${invoice.invoiceNumber || invoice.id}.pdf`;

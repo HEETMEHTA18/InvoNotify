@@ -181,6 +181,8 @@ model CompanySettings {
   email     String?
   name      String?
   phone     String?
+  paymentQrEnabled Boolean @default(false)
+  paymentQrPayload String?
 }
 
 model Product {

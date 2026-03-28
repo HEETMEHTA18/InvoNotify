@@ -262,12 +262,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    if (items) {
-      // Transactional update would be better, but simple approach for now
-      // Delete existing items and create new ones
-      await prisma.invoiceItem.deleteMany({ where: { invoiceId } });
-      updateData.items = {
-        create: items.map(
+    const normalizedItems = Array.isArray(items)
+      ? items.map(
           (item: { description: string; hsnCode?: string; quantity: number | string; rate: number | string; amount: number | string }) => ({
             description: item.description,
             hsnCode: item.hsnCode || null,
@@ -275,9 +271,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             rate: Number(item.rate),
             amount: Number(item.amount),
           })
-        ),
-      };
-    }
+        )
+      : null;
 
     const primaryWhere = {
       id: invoiceId,
@@ -294,6 +289,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
       if (updated.count === 0) {
         return NextResponse.json({ error: "Invoice not found or unauthorized" }, { status: 404 });
+      }
+
+      if (normalizedItems) {
+        await prisma.invoiceItem.deleteMany({ where: { invoiceId } });
+        if (normalizedItems.length > 0) {
+          await prisma.invoiceItem.createMany({
+            data: normalizedItems.map((item) => ({ ...item, invoiceId })),
+          });
+        }
       }
 
       try {
@@ -340,6 +344,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       delete fallbackData.overdueReminderEveryDays;
       delete fallbackData.ownerUserId;
       delete fallbackData.clientPhone;
+      delete fallbackData.items;
 
       let updated;
       try {
@@ -359,6 +364,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
       if (updated.count === 0) {
         return NextResponse.json({ error: "Invoice not found or unauthorized" }, { status: 404 });
+      }
+
+      if (normalizedItems) {
+        await prisma.invoiceItem.deleteMany({ where: { invoiceId } });
+        if (normalizedItems.length > 0) {
+          await prisma.invoiceItem.createMany({
+            data: normalizedItems.map((item) => ({ ...item, invoiceId })),
+          });
+        }
       }
 
       invoice = await prisma.invoice.findFirst({

@@ -42,7 +42,7 @@ export function DashboardLinks() {
                     key={link.id}
                     href={link.href}
                     className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-gray-100",
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition-all hover:bg-gray-100",
                         pathname === link.href
                             ? "bg-gray-100 text-gray-900"
                             : "text-gray-600 hover:text-gray-900"

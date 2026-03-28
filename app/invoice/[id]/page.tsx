@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Save, Download, Printer, Edit, Trash2, Plus } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
+import { buildPaymentPayload } from "@/lib/payment-qr";
 
 // Types
 type InvoiceItem = {
@@ -43,6 +45,11 @@ type Invoice = {
     amount?: number;
 };
 
+type CompanySettings = {
+    paymentQrEnabled?: boolean;
+    paymentQrPayload?: string | null;
+};
+
 import { Suspense } from "react";
 
 function InvoiceDetailContent() {
@@ -54,10 +61,16 @@ function InvoiceDetailContent() {
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const invoiceRef = useRef<HTMLDivElement>(null);
+    const [settings, setSettings] = useState<CompanySettings | null>(null);
+    const [paymentQrDataUrl, setPaymentQrDataUrl] = useState<string | null>(null);
 
     useEffect(() => {
         if (id) fetchInvoice();
     }, [id]);
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
 
     useEffect(() => {
         if (searchParams.get("edit") === "true") setIsEditing(true);
@@ -77,6 +90,47 @@ function InvoiceDetailContent() {
             setLoading(false);
         }
     }
+
+    async function fetchSettings() {
+        try {
+            const res = await fetch("/api/settings");
+            if (!res.ok) return;
+            const data = await res.json();
+            setSettings(data);
+        } catch {
+            // Settings are optional; invoice still renders without payment QR
+        }
+    }
+
+    useEffect(() => {
+        async function generatePaymentQr() {
+            if (!invoice || !settings?.paymentQrEnabled || !settings.paymentQrPayload) {
+                setPaymentQrDataUrl(null);
+                return;
+            }
+
+            const amountValue = Number(invoice.total || invoice.amount || 0);
+            const normalizedAmount = Number.isFinite(amountValue) ? Math.max(0, amountValue).toFixed(2) : "0.00";
+            const payload = buildPaymentPayload(settings.paymentQrPayload, normalizedAmount, invoice.invoiceNumber);
+            if (!payload) {
+                setPaymentQrDataUrl(null);
+                return;
+            }
+
+            try {
+                const dataUrl = await QRCode.toDataURL(payload, {
+                    width: 220,
+                    margin: 1,
+                    errorCorrectionLevel: "M",
+                });
+                setPaymentQrDataUrl(dataUrl);
+            } catch {
+                setPaymentQrDataUrl(null);
+            }
+        }
+
+        generatePaymentQr();
+    }, [invoice, settings]);
 
     async function handleSave() {
         if (!invoice) return;
@@ -388,6 +442,22 @@ function InvoiceDetailContent() {
                             />
                         ) : (
                             <p className="text-sm text-gray-500">{invoice.note || "No additional notes."}</p>
+                        )}
+
+                        {paymentQrDataUrl && (
+                            <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col items-end">
+                                <p className="text-xs font-semibold text-[#8691A6] uppercase tracking-wide mb-2">Scan To Pay</p>
+                                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                                    <img
+                                        src={paymentQrDataUrl}
+                                        alt="Payment QR"
+                                        className="h-36 w-36 object-contain"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Amount: {invoice.currency || "INR"} {Number(invoice.total || invoice.amount || 0).toFixed(2)}
+                                </p>
+                            </div>
                         )}
                     </div>
                 </div>

@@ -7,36 +7,36 @@ export function InvoiceActions({ invoice, onEdit, onDelete, onMarkPaid, onRemind
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
           <MoreHorizontal className="w-5 h-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onEdit}>
+      <DropdownMenuContent align="end" className="min-w-52 p-1.5">
+        <DropdownMenuItem onClick={onEdit} className="py-2.5 text-sm">
           <Pencil className="w-4 h-4 mr-2" /> Edit Invoice
         </DropdownMenuItem>
         <DropdownMenuItem onClick={(e) => {
           e.preventDefault(); // Keep menu open or prevent navigation? No, just good practice sometimes.
           // Actually, we want the menu to close.
           onDownload();
-        }}>
+        }} className="py-2.5 text-sm">
           <Download className="w-4 h-4 mr-2" /> Download Invoice
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onReminder}>
+        <DropdownMenuItem onClick={onReminder} className="py-2.5 text-sm">
           <Mail className="w-4 h-4 mr-2" /> Reminder Email
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onSendSms}>
+        <DropdownMenuItem onClick={onSendSms} className="py-2.5 text-sm">
           <MessageSquare className="w-4 h-4 mr-2" /> Reminder SMS
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-700">
+        <DropdownMenuItem onClick={onDelete} className="py-2.5 text-sm text-red-600 focus:text-red-700">
           <Trash2 className="w-4 h-4 mr-2" /> Delete Invoice
         </DropdownMenuItem>
         {invoice.status !== "Paid" && (
           <>
-            <DropdownMenuItem onClick={onMarkPaid}>
+            <DropdownMenuItem onClick={onMarkPaid} className="py-2.5 text-sm">
               <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Paid
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onRecordPayment}>
+            <DropdownMenuItem onClick={onRecordPayment} className="py-2.5 text-sm">
               <Banknote className="w-4 h-4 mr-2" /> Record Payment
             </DropdownMenuItem>
           </>
