@@ -10,7 +10,11 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
-    "check-db": "npx tsx scripts/check-db.ts",
+    "check-db": "npx tsx scripts/maintenance/check-db.ts",
+    "db:clear": "npx tsx scripts/maintenance/clear-db.ts",
+    "reminders:run": "node --env-file=.env scripts/automation/run-reminders.js",
+    "integration:sarvam:voice": "node --env-file=.env scripts/integration/sarvam-voice.js",
+    "integration:sarvam:vision": "node --env-file=.env scripts/integration/sarvam-vision.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

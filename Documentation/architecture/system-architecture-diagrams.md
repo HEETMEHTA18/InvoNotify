@@ -178,8 +178,8 @@ flowchart LR
 
     subgraph Local[Local Runtime]
         TS[Windows Task Scheduler]
-        BAT[scripts/run-reminders.bat]
-        JS[scripts/run-reminders.js]
+        BAT[scripts/automation/run-reminders.bat]
+        JS[scripts/automation/run-reminders.js]
         ARL[/api/reminders/auto]
     end
 
@@ -199,5 +199,5 @@ flowchart LR
 - For speed improvements, optimize query patterns, caching, payload size, and server rendering strategy before introducing a separate backend service.
 
 ## Document Usage
-- Use `system architecture.md` for full written architecture, decisions, and optimization plan.
-- Use `SYSTEM_ARCHITECTURE_DIAGRAM.md` for visual communication in reviews, presentations, and onboarding.
+- Use `Documentation/architecture/system-architecture.md` for full written architecture, decisions, and optimization plan.
+- Use `Documentation/architecture/system-architecture-diagrams.md` for visual communication in reviews, presentations, and onboarding.

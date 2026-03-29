@@ -28,7 +28,7 @@ flowchart LR
     API --> OCR[OCR Provider\napp/api/ocr/route.ts]
 
     CRON[Vercel Cron / Windows Scheduler] --> AUTO[/api/reminders/auto]
-    SCRIPT[scripts/run-reminders.js] --> AUTO
+    SCRIPT[scripts/automation/run-reminders.js] --> AUTO
 ```
 
 ## 3. Frontend Layer
@@ -82,7 +82,7 @@ Reminder orchestration:
 
 Execution modes:
 - Cloud mode: `vercel.json` cron triggers `/api/reminders/auto` daily at 09:00.
-- Local mode: Windows task scheduler runs `scripts/run-reminders.bat` -> `scripts/run-reminders.js`.
+- Local mode: Windows task scheduler runs `scripts/automation/run-reminders.bat` -> `scripts/automation/run-reminders.js`.
 
 Idempotency and safety:
 - `InvoiceReminderLog` unique key (`invoiceId`, `reminderKey`) prevents duplicate sends.
@@ -143,12 +143,12 @@ For current architecture and scope, continue with integrated Next.js backend and
 - Auto reminders API: `app/api/reminders/auto/route.ts`
 - Reminder sender service: `lib/mail-service.ts`
 - Deployment cron: `vercel.json`
-- Local cron scripts: `scripts/run-reminders.js`, `scripts/run-reminders.bat`
+- Local cron scripts: `scripts/automation/run-reminders.js`, `scripts/automation/run-reminders.bat`
 
 ## 12. Diagram Companion Description
 This repository maintains two architecture documents for different use cases:
 
-- `system architecture.md`: complete narrative architecture, components, decisions, and optimization guidance.
-- `SYSTEM_ARCHITECTURE_DIAGRAM.md`: visual diagrams with short descriptions for context, containers, and request flows.
+- `Documentation/architecture/system-architecture.md`: complete narrative architecture, components, decisions, and optimization guidance.
+- `Documentation/architecture/system-architecture-diagrams.md`: visual diagrams with short descriptions for context, containers, and request flows.
 
 Use them together: start with diagrams for quick understanding, then use this document for implementation-level detail.

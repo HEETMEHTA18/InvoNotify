@@ -148,8 +148,8 @@ flowchart LR
 
 	subgraph Local[Local Runtime]
 		TS[Windows Task Scheduler]
-		BAT[scripts/run-reminders.bat]
-		JS[scripts/run-reminders.js]
+		BAT[scripts/automation/run-reminders.bat]
+		JS[scripts/automation/run-reminders.js]
 		ARL[/api/reminders/auto]
 	end
 
@@ -164,8 +164,8 @@ flowchart LR
 	ARL --> CH
 ```
 
-For full diagrams, see `SYSTEM_ARCHITECTURE_DIAGRAM.md`.
-For complete architecture narrative, see `system architecture.md`.
+For full diagrams, see `Documentation/architecture/system-architecture-diagrams.md`.
+For complete architecture narrative, see `Documentation/architecture/system-architecture.md`.
 
 ## 4. Tech Stack
 - Framework: Next.js 16.x (App Router)
@@ -183,10 +183,13 @@ app/api/             Backend route handlers
 components/          Shared UI components
 lib/                 Auth, DB, reminders, messaging, PDF, helpers
 prisma/              Schema and migrations
-scripts/             Operational scripts (cron trigger, setup helpers)
+scripts/             Operational scripts grouped by purpose
+scripts/automation/  Reminder trigger and scheduling launchers
+scripts/maintenance/ Database and tenancy maintenance scripts
+scripts/integration/ External provider integration test utilities
 logs/                Runtime logs (local reminder scheduler)
 data/                Bulk import sample files
-Documentataion/      Additional project docs (SRS, etc.)
+Documentation/      Additional project docs (SRS, etc.)
 ```
 
 ## 6. Prerequisites
@@ -298,8 +301,8 @@ npm run start
 - After changing env vars, redeploy the project.
 
 ### Local (Windows Task Scheduler)
-- Launcher: `scripts/run-reminders.bat`
-- Script: `scripts/run-reminders.js`
+- Launcher: `scripts/automation/run-reminders.bat`
+- Script: `scripts/automation/run-reminders.js`
 - Logs: `logs/reminder-cron.log`
 - Ensure target URL is reachable when scheduler runs:
 	- Set `REMINDER_TARGET_URL` (or `SITE_URL`) to your live app URL, or
@@ -307,7 +310,7 @@ npm run start
 
 Manual test run:
 ```bash
-node --env-file=.env scripts/run-reminders.js
+node --env-file=.env scripts/automation/run-reminders.js
 ```
 
 ## 12. API Surface
@@ -349,7 +352,7 @@ Apply these before considering a separate backend service:
 
 ### Reminders not triggering
 - Check `REMINDER_CRON_SECRET` and `CRON_SECRET` values.
-- Confirm scheduler invokes `scripts/run-reminders.bat`.
+- Confirm scheduler invokes `scripts/automation/run-reminders.bat`.
 - Inspect `logs/reminder-cron.log`.
 - Test endpoint manually via script command above.
 - If you see `ECONNREFUSED`, your target URL is down/unreachable at runtime.
@@ -360,9 +363,11 @@ Apply these before considering a separate backend service:
 - Check provider account status and sender number permissions.
 
 ## 16. Documentation Map
-- Main architecture narrative: `system architecture.md`
-- Detailed diagrams: `SYSTEM_ARCHITECTURE_DIAGRAM.md`
-- Product/system requirements: `Documentataion/SRS.md`
+- Documentation index: `Documentation/README.md`
+- Main architecture narrative: `Documentation/architecture/system-architecture.md`
+- Detailed diagrams: `Documentation/architecture/system-architecture-diagrams.md`
+- Product/system requirements: `Documentation/SRS.md`
+- Script operations guide: `scripts/README.md`
 
 ## 17. License
 Project developed for B2B Invoice Management. All rights reserved.

@@ -1,4 +1,4 @@
-import { prisma } from "../lib/db";
+import { prisma } from "../../lib/db";
 
 async function main() {
   // Order matters due to foreign key constraints
