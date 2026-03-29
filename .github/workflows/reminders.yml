@@ -20,7 +20,7 @@ jobs:
       - name: Trigger Reminders via API
         env:
           SITE_URL: ${{ secrets.SITE_URL || vars.SITE_URL || 'invonotify.vercel.app' }}
-          REMINDER_CRON_SECRET: ${{ secrets.REMINDER_CRON_SECRET || secrets.CRON_SECRET }}
+          REMINDER_CRON_SECRET: ${{ secrets.REMINDER_CRON_SECRET || secrets.CRON_SECRET || vars.REMINDER_CRON_SECRET || vars.CRON_SECRET }}
         run: |
           NORMALIZED_SITE_URL="${SITE_URL%/}"
           if [[ ! "${NORMALIZED_SITE_URL}" =~ ^https?:// ]]; then
@@ -28,7 +28,7 @@ jobs:
           fi
 
           if [ -z "${REMINDER_CRON_SECRET}" ]; then
-            echo "::error::Missing reminder secret. Configure secrets.REMINDER_CRON_SECRET (or secrets.CRON_SECRET) in GitHub Actions and set the same value in Vercel env (CRON_SECRET or REMINDER_CRON_SECRET)."
+            echo "::error::Missing reminder secret. Configure REMINDER_CRON_SECRET (or CRON_SECRET) as a GitHub secret/variable and set the same value in Vercel env (CRON_SECRET or REMINDER_CRON_SECRET)."
             exit 1
           fi
 
