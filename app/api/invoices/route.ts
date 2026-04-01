@@ -33,6 +33,18 @@ function isReminderSchemaMismatch(error: unknown) {
   );
 }
 
+function isReminderLogDuplicateError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("invoiceId") &&
+    message.includes("reminderKey") &&
+    message.includes("Unique constraint failed")
+  );
+}
+
 // GET: List all invoices
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -368,14 +380,20 @@ export async function POST(req: NextRequest) {
           });
 
           // Log it so sweep doesn't resend
-          await prisma.invoiceReminderLog.create({
-            data: {
-              invoiceId: invoice.id,
-              reminderKey: match.reminderKey,
-              reminderType: match.reminderType,
-              targetDate: match.targetDate,
-            },
-          });
+          try {
+            await prisma.invoiceReminderLog.create({
+              data: {
+                invoiceId: invoice.id,
+                reminderKey: match.reminderKey,
+                reminderType: match.reminderType,
+                targetDate: match.targetDate,
+              },
+            });
+          } catch (e) {
+            if (!isReminderLogDuplicateError(e)) {
+              throw e;
+            }
+          }
         } catch (e) {
           console.error("Failed to send immediate invoice reminder:", e);
         }

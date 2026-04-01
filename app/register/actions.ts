@@ -5,13 +5,19 @@ import { redirect } from "next/navigation"
 import bcrypt from "bcryptjs"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 
+const STRICT_EMAIL_REGEX = /^(?=.{6,254}$)(?=.{1,64}@)(?=[A-Za-z])[A-Za-z0-9._%+-]*[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/
+
 export async function handleRegister(formData: FormData) {
     const name = formData.get("name") as string
-    const email = formData.get("email") as string
+    const email = (formData.get("email") as string)?.trim().toLowerCase()
     const password = formData.get("password") as string
 
     if (!email || !password || !name) {
         redirect("/register?error=missing_fields")
+    }
+
+    if (!STRICT_EMAIL_REGEX.test(email)) {
+        redirect("/register?error=invalid_email")
     }
 
     try {

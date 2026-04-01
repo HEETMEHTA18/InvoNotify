@@ -21,9 +21,9 @@ export default function Header() {
   }, []);
 
   const navLinks = [
-    { label: 'Features', href: '#features' },
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'FAQ', href: '#faq' },
+    { label: 'Features', href: '/register' },
+    { label: 'How It Works', href: '/register' },
+    { label: 'FAQ', href: '/register' },
   ];
 
   return (
@@ -37,7 +37,7 @@ export default function Header() {
     >
       <div className='max-w-7xl mx-auto px-4 md:px-6 lg:px-8 h-16 md:h-20 flex items-center justify-between'>
         {/* Logo */}
-        <Link href='/' className='flex items-center gap-2'>
+        <Link href='/register' className='flex items-center gap-2'>
           <div className='flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-lg border border-[#D1D5DB] bg-white shadow-sm overflow-hidden'>
             <Image
               src='/icon.png'
@@ -57,7 +57,7 @@ export default function Header() {
         <nav className='hidden md:flex items-center gap-8 lg:gap-12'>
           {navLinks.map((link) => (
             <a
-              key={link.href}
+              key={link.label}
               href={link.href}
               className='text-[#4B5563] hover:text-[#596778] font-medium transition-colors text-sm lg:text-base'
             >
@@ -69,7 +69,7 @@ export default function Header() {
         {/* Right Section */}
         <div className='flex items-center gap-3 md:gap-4'>
           <Button asChild variant='ghost' size='sm' className='hidden sm:flex text-[#596778] hover:text-[#8B5CF6] text-sm md:text-base'>
-            <Link href='/login'>Sign In</Link>
+            <Link href='/register'>Sign In</Link>
           </Button>
           <Button asChild size='sm' className='hidden sm:flex text-xs md:text-sm'>
             <Link href='/register'>Get Started</Link>
@@ -96,7 +96,7 @@ export default function Header() {
           <nav className='px-4 py-3 space-y-2'>
             {navLinks.map((link) => (
               <a
-                key={link.href}
+                key={link.label}
                 href={link.href}
                 className='block px-4 py-3 rounded-lg text-[#4B5563] hover:bg-[#F3F4F6] transition-colors font-medium text-sm'
                 onClick={() => setIsOpen(false)}
@@ -106,7 +106,7 @@ export default function Header() {
             ))}
             <div className='flex gap-2 pt-3 border-t border-[#E5E7EB] mt-3'>
               <Button asChild variant='secondary' size='sm' className='w-full'>
-                <Link href='/login'>Sign In</Link>
+                <Link href='/register'>Sign In</Link>
               </Button>
               <Button asChild size='sm' className='w-full'>
                 <Link href='/register'>Get Started</Link>

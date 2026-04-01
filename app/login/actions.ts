@@ -5,9 +5,15 @@ import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { Prisma } from "@/lib/db"
 
+const STRICT_EMAIL_REGEX = /^(?=.{6,254}$)(?=.{1,64}@)(?=[A-Za-z])[A-Za-z0-9._%+-]*[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/
+
 export async function handleEmailSignIn(formData: FormData) {
-  const email = formData.get("email") as string;
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
+
+  if (!STRICT_EMAIL_REGEX.test(email)) {
+    redirect("/login?error=invalid_email")
+  }
 
   try {
     await signIn("credentials", {

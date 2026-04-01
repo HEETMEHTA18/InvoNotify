@@ -15,6 +15,8 @@ export default function HowItWorks() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref);
   const [activeStep, setActiveStep] = useState(0);
+  const accentPrimary = '#596778';
+  const accentSecondary = '#7B6EE8';
 
   const steps: Step[] = [
     {
@@ -42,10 +44,12 @@ export default function HowItWorks() {
 
     const timer = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % steps.length);
-    }, 1800);
+    }, 3600);
 
     return () => clearInterval(timer);
   }, [isInView, steps.length]);
+
+  const progressWidth = `${((activeStep + 1) / steps.length) * 100}%`;
 
   return (
     <section
@@ -68,10 +72,21 @@ export default function HowItWorks() {
           {/* Connector Lines (Desktop Only) */}
           <div
             className={cn(
-              'hidden md:block absolute top-20 left-0 right-0 h-1 bg-linear-to-r from-[#596778] via-[#8B5CF6] to-[#10B981] transition-all duration-1000',
+              'hidden md:block absolute top-20 left-0 right-0 h-1 rounded-full bg-slate-200/70 transition-all duration-1000',
               isInView ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
             )}
             style={{ transformOrigin: 'left center' }}
+          />
+
+          <div
+            className={cn(
+              'hidden md:block absolute top-20 left-0 h-1 rounded-full bg-linear-to-r transition-all duration-900 ease-out',
+              isInView ? 'opacity-100' : 'opacity-0'
+            )}
+            style={{
+              width: progressWidth,
+              backgroundImage: `linear-gradient(to right, ${accentPrimary}, ${accentSecondary})`,
+            }}
           />
 
           {/* Steps */}
@@ -79,47 +94,41 @@ export default function HowItWorks() {
             <div
               key={step.number}
               className={cn(
-                'relative transition-all duration-700 rounded-2xl p-4 md:p-5',
+                'relative rounded-2xl p-4 md:p-5 border transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]',
                 isInView
                   ? 'opacity-100 translate-y-0'
                   : 'opacity-0 translate-y-8',
                 activeStep === index
-                  ? 'bg-white shadow-md ring-1 ring-[#DDE4EC]'
-                  : 'bg-transparent'
+                  ? 'bg-white shadow-lg border-[#DDE4EC] -translate-y-1'
+                  : 'bg-white/70 border-[#E5E7EB] shadow-sm'
               )}
               style={{
                 transitionDelay: isInView ? `${index * 150}ms` : '0ms',
               }}
             >
+              <div
+                className={cn(
+                  'pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset transition-opacity duration-500',
+                  activeStep === index ? 'opacity-100' : 'opacity-0'
+                )}
+                style={{ borderColor: `${accentSecondary}30` }}
+              />
+
               {/* Number Container */}
               <div className='relative z-10 inline-block mb-6 md:mb-8'>
                 <div
                   className={cn(
-                    'w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center font-bold text-2xl md:text-3xl transition-all duration-300',
-                    'bg-linear-to-br from-[#596778] to-[#8B5CF6]',
-                    activeStep === index ? 'scale-105 shadow-lg' : 'scale-100',
-                    index === 0
-                      ? 'text-white'
-                      : index === 1
-                        ? 'text-white'
-                        : 'text-white'
+                    'w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center font-bold text-2xl md:text-3xl transition-all duration-500',
+                    'text-white',
+                    activeStep === index ? 'scale-105 shadow-lg' : 'scale-100'
                   )}
+                  style={{
+                    backgroundImage: `linear-gradient(135deg, ${accentPrimary}, ${accentSecondary})`,
+                    boxShadow: activeStep === index ? '0 10px 24px rgba(89, 103, 120, 0.22)' : 'none',
+                  }}
                 >
                   {step.number}
                 </div>
-
-                {/* Glow effect */}
-                <div
-                  className='absolute inset-0 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity'
-                  style={{
-                    background:
-                      index === 0
-                        ? 'rgba(89, 103, 120, 0.3)'
-                        : index === 1
-                          ? 'rgba(139, 92, 246, 0.3)'
-                          : 'rgba(16, 185, 129, 0.3)',
-                  }}
-                />
               </div>
 
               {/* Content */}
@@ -136,11 +145,20 @@ export default function HowItWorks() {
                     className={cn(
                       'mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-500',
                       activeStep >= 1
-                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                        ? 'ring-1'
                         : 'bg-slate-100 text-slate-500'
                     )}
+                    style={
+                      activeStep >= 1
+                        ? {
+                            backgroundColor: '#EEF2FF',
+                            color: accentPrimary,
+                            borderColor: '#C7D2FE',
+                          }
+                        : undefined
+                    }
                   >
-                    <Mail className={cn('h-3.5 w-3.5', activeStep === 1 ? 'animate-bounce' : '')} />
+                    <Mail className='h-3.5 w-3.5' />
                     Email sent to client
                   </div>
                 )}
@@ -149,12 +167,9 @@ export default function HowItWorks() {
                 <div
                   className={cn(
                     'hidden sm:block h-1 w-12 mt-6 md:mt-8 rounded-full transition-all duration-300 group-hover:w-20',
-                    index === 0
-                      ? 'bg-[#596778]'
-                      : index === 1
-                        ? 'bg-[#8B5CF6]'
-                        : 'bg-[#10B981]'
+                    activeStep === index ? 'w-20' : 'w-12'
                   )}
+                  style={{ backgroundColor: activeStep === index ? accentSecondary : accentPrimary }}
                 />
               </div>
             </div>
@@ -169,11 +184,21 @@ export default function HowItWorks() {
             <span className='text-xs md:text-sm text-[#6B7280]'>Auto-playing demo</span>
           </div>
 
+          <div className='mt-3 h-1.5 w-full rounded-full bg-slate-200/70 overflow-hidden'>
+            <div
+              className='h-full rounded-full transition-all duration-900 ease-out'
+              style={{
+                width: progressWidth,
+                backgroundImage: `linear-gradient(to right, ${accentPrimary}, ${accentSecondary})`,
+              }}
+            />
+          </div>
+
           <div className='mt-4 grid grid-cols-1 md:grid-cols-3 gap-3'>
             <div
               className={cn(
                 'rounded-xl border px-4 py-3 transition-all duration-500',
-                activeStep >= 0 ? 'border-[#94A3B8] bg-slate-50' : 'border-[#E5E7EB] bg-white'
+                activeStep >= 0 ? 'border-[#CBD5E1] bg-slate-50 shadow-sm' : 'border-[#E5E7EB] bg-white'
               )}
             >
               <div className='flex items-center gap-2 text-sm font-medium text-[#334155]'>
@@ -186,11 +211,11 @@ export default function HowItWorks() {
             <div
               className={cn(
                 'rounded-xl border px-4 py-3 transition-all duration-500',
-                activeStep >= 1 ? 'border-[#A78BFA] bg-violet-50' : 'border-[#E5E7EB] bg-white'
+                activeStep >= 1 ? 'border-[#D6D3FB] bg-[#F5F3FF] shadow-sm' : 'border-[#E5E7EB] bg-white'
               )}
             >
               <div className='flex items-center gap-2 text-sm font-medium text-[#334155]'>
-                <Mail className={cn('h-4 w-4', activeStep === 1 ? 'animate-pulse' : '')} />
+                <Mail className='h-4 w-4' />
                 Email Sent
               </div>
               <p className='mt-1 text-xs text-[#64748B]'>Delivered to client inbox with tracking</p>
@@ -199,7 +224,7 @@ export default function HowItWorks() {
             <div
               className={cn(
                 'rounded-xl border px-4 py-3 transition-all duration-500',
-                activeStep >= 2 ? 'border-[#34D399] bg-emerald-50' : 'border-[#E5E7EB] bg-white'
+                activeStep >= 2 ? 'border-[#D6D3FB] bg-[#EEF2FF] shadow-sm' : 'border-[#E5E7EB] bg-white'
               )}
             >
               <div className='flex items-center gap-2 text-sm font-medium text-[#334155]'>
@@ -211,22 +236,6 @@ export default function HowItWorks() {
           </div>
         </div>
 
-        {/* Bottom Illustration */}
-        <div className='mt-16 md:mt-20 lg:mt-24'>
-          <div className='bg-linear-to-r from-[#596778]/5 to-[#8B5CF6]/5 rounded-2xl border border-[#E5E7EB] p-8 md:p-12 text-center'>
-            <h3 className='text-2xl md:text-3xl font-bold text-[#2C3E50] mb-3'>
-              Ready to get started?
-            </h3>
-            <p className='text-[#4B5563] text-base md:text-lg mb-6 md:mb-8 max-w-2xl mx-auto'>
-              Join businesses using invonotify to manage their
-              invoicing. Start for free today, no credit card required.
-            </p>
-            <button className='inline-flex items-center gap-2 bg-[#596778] text-white px-6 md:px-8 py-3 md:py-4 rounded-lg font-semibold hover:bg-[#4a5568] transition-colors'>
-              Start Creating Invoices
-              <span className='text-xl'>→</span>
-            </button>
-          </div>
-        </div>
       </div>
     </section>
   );

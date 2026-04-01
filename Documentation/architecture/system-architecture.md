@@ -57,7 +57,7 @@ Core domains:
 Security model:
 - Session checks in route handlers using `auth()` from `lib/auth.ts`.
 - `middleware.ts` matcher protects `/dashboard/:path*` entry routes.
-- Cron endpoint supports bearer/header secret validation via `CRON_SECRET` or `REMINDER_CRON_SECRET`.
+- Cron endpoint supports bearer/header secret validation via `CRON_SECRET` (with `REMINDER_CRON_SECRET` as compatibility fallback).
 
 ## 5. Data Layer
 Prisma schema is defined in `prisma/schema.prisma`.
@@ -81,7 +81,7 @@ Reminder orchestration:
 - Delivery channels: Email (Gmail), SMS (Twilio), Telegram mirror notification, Voice calls
 
 Execution modes:
-- Cloud mode: `vercel.json` cron triggers `/api/reminders/auto` daily at 09:00.
+- Cloud mode: `vercel.json` cron triggers `/api/reminders/auto` daily at 7:00 PM IST (`30 13 * * *` UTC).
 - Local mode: Windows task scheduler runs `scripts/automation/run-reminders.bat` -> `scripts/automation/run-reminders.js`.
 
 Idempotency and safety:

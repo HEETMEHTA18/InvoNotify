@@ -142,7 +142,7 @@ sequenceDiagram
 flowchart LR
 	subgraph Cloud[Cloud Runtime]
 		V[Vercel Deployment]
-		VC[Vercel Cron\n0 9 * * *]
+		VC[Vercel Cron\n30 13 * * *]
 		AR[/api/reminders/auto]
 	end
 
@@ -245,9 +245,9 @@ SARVAM_API_KEY="..."
 
 ### Cron Security
 ```env
-REMINDER_CRON_SECRET="set-a-long-random-value"
-# Optional alias used by some scripts
-CRON_SECRET="same-or-different-random-value"
+CRON_SECRET="set-a-long-random-value"
+# Optional legacy alias (if present, keep it identical)
+REMINDER_CRON_SECRET="same-value-as-cron-secret"
 ```
 
 ## 8. Local Setup
@@ -295,9 +295,9 @@ npm run start
 
 ## 11. Reminder Automation (Local and Cloud)
 ### Cloud (Vercel)
-- `vercel.json` triggers `/api/reminders/auto` daily.
+- `vercel.json` triggers `/api/reminders/auto` daily at 7:00 PM IST (`30 13 * * *` UTC).
 - Set `CRON_SECRET` in Vercel Project Environment Variables (important: Vercel cron uses this name for bearer auth).
-- Keep `REMINDER_CRON_SECRET` only as optional compatibility alias in your app.
+- Keep `REMINDER_CRON_SECRET` only as an optional legacy compatibility alias, with the same value as `CRON_SECRET`.
 - After changing env vars, redeploy the project.
 
 ### Local (Windows Task Scheduler)

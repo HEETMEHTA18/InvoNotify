@@ -229,3 +229,26 @@ transactions:
       - ledger_name: GST 18%
         amount: 1620
     narration: "Scenario: pending + due today for immediate send test"
+
+  - voucher_type: Sales
+    date: 2022-01-10
+    due_date: 2026-03-30
+    invoice_no: TEST-RMD-LOYAL-3Y-OD
+    party_ledger: Reminder Test Loyal Client K
+    client_email: heetmehta18125@gmail.com
+    client_phone: "+919876543220"
+    status: Pending
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: EMAIL
+    inventory:
+      - item_name: Long-term AMC Renewal
+        quantity: 1
+        rate: 15000
+        amount: 15000
+    ledger_allocations:
+      - ledger_name: GST 18%
+        amount: 2700
+    narration: "Scenario: loyal customer >3 years with overdue invoice should be excluded from high-risk dashboard list"

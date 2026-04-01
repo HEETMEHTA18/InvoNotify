@@ -66,6 +66,8 @@ export async function GET(req: NextRequest) {
     const userId = session.user.id;
     try {
         const now = new Date();
+        const threeYearsAgo = new Date(now);
+        threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
         const revenueRangeRaw = req.nextUrl.searchParams.get("revenueRange");
         const revenueRange: "day" | "week" | "month" =
             revenueRangeRaw === "day" || revenueRangeRaw === "week" || revenueRangeRaw === "month"
@@ -141,20 +143,28 @@ export async function GET(req: NextRequest) {
                 _count: { _all: true },
             }),
             prisma.$queryRaw<HighRiskGroupRow[]>`
-                SELECT "clientName",
-                       "clientEmail",
-                       COUNT(*)::int AS invoice_count,
+                                SELECT i."clientName",
+                                             i."clientEmail",
+                                             COUNT(*)::int AS invoice_count,
                        SUM(
                          CASE
-                           WHEN COALESCE("total", 0) = 0 THEN COALESCE("amount", 0)
-                           ELSE "total"
+                                                     WHEN COALESCE(i."total", 0) = 0 THEN COALESCE(i."amount", 0)
+                                                     ELSE i."total"
                          END
                        ) AS total_overdue
-                FROM "Invoice"
-                WHERE "status" IN ('Pending', 'Draft')
-                  AND "dueDate" < ${now}
-                  AND "userId" = ${userId}
-                GROUP BY "clientName", "clientEmail"
+                                FROM "Invoice" i
+                                WHERE i."status" IN ('Pending', 'Draft')
+                                    AND i."dueDate" < ${now}
+                                    AND i."userId" = ${userId}
+                                    AND NOT EXISTS (
+                                        SELECT 1
+                                        FROM "Invoice" history
+                                        WHERE history."userId" = i."userId"
+                                            AND COALESCE(history."clientName", '') = COALESCE(i."clientName", '')
+                                            AND COALESCE(history."clientEmail", '') = COALESCE(i."clientEmail", '')
+                                            AND history."date" <= ${threeYearsAgo}
+                                    )
+                                GROUP BY i."clientName", i."clientEmail"
                 ORDER BY total_overdue DESC
                 LIMIT 10
             `,

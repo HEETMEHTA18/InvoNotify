@@ -138,7 +138,7 @@ export default function Features() {
             Want to see all features?
           </p>
           <a
-            href='#'
+            href='/register'
             className='inline-flex items-center gap-2 text-[#596778] font-semibold hover:text-[#8B5CF6] transition-colors'
           >
             Explore Full Feature List

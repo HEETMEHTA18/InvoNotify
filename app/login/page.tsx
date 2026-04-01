@@ -29,6 +29,7 @@ function LoginContent() {
     const errorMessages = useMemo(() => ({
         signin_failed: "Invalid email or password",
         db_unavailable: "Database connection error. Please try again later.",
+        invalid_email: "Please enter a valid business email format.",
     }), []);
 
     const successMessages = useMemo(() => ({
@@ -73,6 +74,8 @@ function LoginContent() {
                                     name="email"
                                     type="email"
                                     placeholder="demo@example.com"
+                                    pattern="^(?=.{6,254}$)(?=.{1,64}@)(?=[A-Za-z])[A-Za-z0-9._%+-]*[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}$"
+                                    title="Use a valid email address like name@company.com"
                                     required
                                 />
                             </div>

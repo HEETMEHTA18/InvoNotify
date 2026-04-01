@@ -29,6 +29,18 @@ function isInvoiceNumberUniqueViolation(error: unknown) {
   return message.includes("Invoice_invoiceNumber_ownerUserId_key") || message.includes("Unique constraint failed");
 }
 
+function isReminderLogDuplicateError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("invoiceId") &&
+    message.includes("reminderKey") &&
+    message.includes("Unique constraint failed")
+  );
+}
+
 // GET: Get a single invoice with items
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -444,14 +456,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
               daysOverdue: match.daysOverdue,
             });
 
-            await prisma.invoiceReminderLog.create({
-              data: {
-                invoiceId: reminderInvoice.id,
-                reminderKey: match.reminderKey,
-                reminderType: match.reminderType,
-                targetDate: match.targetDate,
-              },
-            });
+            try {
+              await prisma.invoiceReminderLog.create({
+                data: {
+                  invoiceId: reminderInvoice.id,
+                  reminderKey: match.reminderKey,
+                  reminderType: match.reminderType,
+                  targetDate: match.targetDate,
+                },
+              });
+            } catch (e) {
+              if (!isReminderLogDuplicateError(e)) {
+                throw e;
+              }
+            }
           } catch (e) {
             console.error("Failed to send immediate invoice reminder on update:", e);
           }

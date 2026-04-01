@@ -110,13 +110,13 @@ export default function FAQ() {
           </p>
           <div className='flex flex-col sm:flex-row gap-3 justify-center'>
             <a
-              href='mailto:support@invonotify.com'
+              href='/register'
               className='inline-flex items-center justify-center gap-2 bg-[#596778] text-white px-6 md:px-8 py-3 md:py-4 rounded-lg font-semibold hover:bg-[#4a5568] transition-colors'
             >
               Email Support
             </a>
             <a
-              href='#'
+              href='/register'
               className='inline-flex items-center justify-center gap-2 border border-[#8691A6] text-[#596778] px-6 md:px-8 py-3 md:py-4 rounded-lg font-semibold hover:bg-[#F3F4F6] transition-colors'
             >
               Live Chat

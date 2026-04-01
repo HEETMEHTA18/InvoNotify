@@ -11,7 +11,7 @@ const MAX_ATTEMPTS = Number(process.env.REMINDER_RETRY_ATTEMPTS || 3);
 const RETRY_DELAY_MS = Number(process.env.REMINDER_RETRY_DELAY_MS || 5000);
 
 if (!CRON_SECRET) {
-    console.error('CRON_SECRET (or REMINDER_CRON_SECRET) is not defined in .env');
+    console.error('CRON_SECRET is not defined in .env (REMINDER_CRON_SECRET is supported as legacy fallback)');
     process.exit(1);
 }
 

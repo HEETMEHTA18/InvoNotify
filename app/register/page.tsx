@@ -23,6 +23,7 @@ export default async function Register({
     const errorMessages = {
         missing_fields: "Please fill in all required fields",
         user_exists: "An account with this email already exists",
+        invalid_email: "Please enter a valid business email format",
         registration_failed: "Registration failed. Please try again",
     }
 
@@ -67,6 +68,8 @@ export default async function Register({
                                     name="email"
                                     type="email"
                                     placeholder="demo@example.com"
+                                    pattern="^(?=.{6,254}$)(?=.{1,64}@)(?=[A-Za-z])[A-Za-z0-9._%+-]*[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}$"
+                                    title="Use a valid email address like name@company.com"
                                     required
                                 />
                             </div>

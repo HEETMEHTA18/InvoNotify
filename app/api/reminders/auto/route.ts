@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prisma, Prisma } from "@/lib/db";
 import { getReminderMatchForDate } from "@/lib/reminders";
 import { sendInvoiceReminderById } from "@/lib/mail-service";
 
 export const runtime = "nodejs";
+
+function isReminderLogDuplicateError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    return true;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("invoiceId") &&
+    message.includes("reminderKey") &&
+    message.includes("Unique constraint failed")
+  );
+}
 
 function isCronAuthorized(req: NextRequest) {
   const configuredSecret = process.env.CRON_SECRET || process.env.REMINDER_CRON_SECRET;
@@ -123,14 +136,22 @@ async function runAutoReminderSweep(now: Date, limitUserId?: string, manualOverr
         continue;
       }
 
-      await prisma.invoiceReminderLog.create({
-        data: {
-          invoiceId: invoice.id,
-          reminderKey: match.reminderKey,
-          reminderType: match.reminderType,
-          targetDate: match.targetDate,
-        },
-      });
+      try {
+        await prisma.invoiceReminderLog.create({
+          data: {
+            invoiceId: invoice.id,
+            reminderKey: match.reminderKey,
+            reminderType: match.reminderType,
+            targetDate: match.targetDate,
+          },
+        });
+      } catch (error) {
+        if (isReminderLogDuplicateError(error)) {
+          skippedCount += 1;
+          continue;
+        }
+        throw error;
+      }
 
       sentCount += 1;
     } catch (error) {

@@ -20,46 +20,46 @@ export default function Footer() {
     {
       title: 'Product',
       links: [
-        { label: 'Features', href: '#features' },
-        { label: 'Pricing', href: '#pricing' },
-        { label: 'Security', href: '#security' },
-        { label: 'Roadmap', href: '#roadmap' },
+        { label: 'Features', href: '/register' },
+        { label: 'Pricing', href: '/register' },
+        { label: 'Security', href: '/register' },
+        { label: 'Roadmap', href: '/register' },
       ],
     },
     {
       title: 'Resources',
       links: [
-        { label: 'Documentation', href: '#docs' },
-        { label: 'API Reference', href: '#api' },
-        { label: 'Blog', href: '#blog' },
-        { label: 'Help Center', href: '#help' },
+        { label: 'Documentation', href: '/register' },
+        { label: 'API Reference', href: '/register' },
+        { label: 'Blog', href: '/register' },
+        { label: 'Help Center', href: '/register' },
       ],
     },
     {
       title: 'Company',
       links: [
-        { label: 'About', href: '#about' },
-        { label: 'Careers', href: '#careers' },
-        { label: 'Press', href: '#press' },
-        { label: 'Contact', href: '#contact' },
+        { label: 'About', href: '/register' },
+        { label: 'Careers', href: '/register' },
+        { label: 'Press', href: '/register' },
+        { label: 'Contact', href: '/register' },
       ],
     },
     {
       title: 'Legal',
       links: [
-        { label: 'Privacy Policy', href: '#privacy' },
-        { label: 'Terms of Service', href: '#terms' },
-        { label: 'Cookie Policy', href: '#cookies' },
-        { label: 'GDPR', href: '#gdpr' },
+        { label: 'Privacy Policy', href: '/register' },
+        { label: 'Terms of Service', href: '/register' },
+        { label: 'Cookie Policy', href: '/register' },
+        { label: 'GDPR', href: '/register' },
       ],
     },
   ];
 
   const socialLinks = [
-    { icon: Twitter, href: '#twitter', label: 'Twitter' },
-    { icon: Linkedin, href: '#linkedin', label: 'LinkedIn' },
-    { icon: Github, href: '#github', label: 'GitHub' },
-    { icon: Facebook, href: '#facebook', label: 'Facebook' },
+    { icon: Twitter, href: '/register', label: 'Twitter' },
+    { icon: Linkedin, href: '/register', label: 'LinkedIn' },
+    { icon: Github, href: '/register', label: 'GitHub' },
+    { icon: Facebook, href: '/register', label: 'Facebook' },
   ];
 
   return (
@@ -160,13 +160,13 @@ export default function Footer() {
 
             <div className='flex gap-6 md:gap-8'>
               <a
-                href='#status'
+                href='/register'
                 className='hover:text-white transition-colors'
               >
                 Status
               </a>
               <a
-                href='mailto:hello@invonotify.com'
+                href='/register'
                 className='flex items-center gap-2 hover:text-white transition-colors'
               >
                 <Mail className='w-4 h-4' />
@@ -180,7 +180,7 @@ export default function Footer() {
             <p className='text-xs md:text-sm text-white/40 text-center'>
               invonotify is committed to accessibility. If you encounter any
               accessibility issues, please{' '}
-              <a href='#a11y' className='underline hover:text-white/60'>
+              <a href='/register' className='underline hover:text-white/60'>
                 contact us
               </a>
               .

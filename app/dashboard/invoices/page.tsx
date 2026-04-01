@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InvoiceList } from "./InvoiceList";
 import { PaymentDialog } from "./PaymentDialog";
 import { generateInvoicePDF } from "@/lib/pdf";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FileText,
   Plus,
@@ -68,6 +68,7 @@ export default function InvoicesPage() {
   const tallyFileInputRef = useRef<HTMLInputElement>(null);
   const customerFileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const fetchInvoices = useCallback(async ({ reset = true }: { reset?: boolean } = {}) => {
     if (reset) {
@@ -114,6 +115,13 @@ export default function InvoicesPage() {
   useEffect(() => {
     fetchInvoices({ reset: true });
   }, [fetchInvoices]);
+
+  useEffect(() => {
+    const presetSearch = searchParams.get("search");
+    if (presetSearch && presetSearch.trim()) {
+      setSearch(presetSearch.trim());
+    }
+  }, [searchParams]);
 
   async function handleBulkImport(e: React.ChangeEvent<HTMLInputElement>, type: 'invoice' | 'customer') {
     const file = e.target.files?.[0];

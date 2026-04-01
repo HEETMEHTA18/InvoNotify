@@ -7,7 +7,6 @@ import Hero from '@/components/landing/Hero';
 import Features from '@/components/landing/Features';
 import HowItWorks from '@/components/landing/HowItWorks';
 import FAQ from '@/components/landing/FAQ';
-import FinalCTA from '@/components/landing/FinalCTA';
 import Footer from '@/components/landing/Footer';
 
 export default function LandingPage() {
@@ -18,10 +17,7 @@ export default function LandingPage() {
   };
 
   const handleDemo = () => {
-    const section = document.getElementById('how-it-works');
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    router.push('/register');
   };
 
   return (
@@ -49,8 +45,6 @@ export default function LandingPage() {
           <FAQ />
         </section>
 
-        {/* Final CTA Section */}
-        <FinalCTA onGetStarted={handleGetStarted} />
       </main>
 
       {/* Footer */}
