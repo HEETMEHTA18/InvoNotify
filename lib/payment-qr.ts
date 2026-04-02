@@ -2,18 +2,20 @@ export function isValidPaymentPayload(payload: unknown): payload is string {
   if (typeof payload !== "string") return false;
   const trimmed = payload.trim();
   if (!trimmed) return false;
-  return trimmed.includes("{amount}") || trimmed.startsWith("upi://pay");
+  const normalized = trimmed.toLowerCase();
+  return trimmed.includes("{amount}") || normalized.startsWith("upi://pay");
 }
 
 export function buildPaymentPayload(basePayload: string, amount: string, invoiceNumber: string) {
   const trimmed = basePayload.trim();
   if (!trimmed) return "";
+  const normalized = trimmed.toLowerCase();
 
   if (trimmed.includes("{amount}")) {
     return trimmed.replaceAll("{amount}", amount);
   }
 
-  if (trimmed.startsWith("upi://pay")) {
+  if (normalized.startsWith("upi://pay")) {
     try {
       const url = new URL(trimmed);
       url.searchParams.set("am", amount);

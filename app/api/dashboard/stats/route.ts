@@ -30,7 +30,7 @@ async function getRevenueBuckets(
                 GROUP BY "invoiceId"
             ) lp ON lp."invoiceId" = i.id
             WHERE i."status" = 'Paid'
-              AND i."userId" = ${userId}
+                            AND (i."ownerUserId" = ${userId} OR i."userId" = ${userId})
         )
         SELECT date_trunc(${bucket}::text, paid_at) AS bucket_start,
                SUM(revenue) AS revenue
@@ -64,6 +64,9 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const userId = session.user.id;
+    const userInvoiceScope: Prisma.InvoiceWhereInput = {
+        OR: [{ ownerUserId: userId }, { userId }],
+    };
     try {
         const now = new Date();
         const threeYearsAgo = new Date(now);
@@ -94,27 +97,27 @@ export async function GET(req: NextRequest) {
             highRiskGroups,
         ] = await Promise.all([
             prisma.invoice.aggregate({
-                where: { userId },
+                where: userInvoiceScope,
                 _count: { _all: true },
             }),
             prisma.invoice.aggregate({
-                where: { status: "Paid", userId },
+                where: { ...userInvoiceScope, status: "Paid" },
                 _sum: { total: true, amount: true },
             }),
             prisma.invoice.aggregate({
-                where: { status: { in: ["Pending", "Draft"] }, userId },
+                where: { ...userInvoiceScope, status: { in: ["Pending", "Draft"] } },
                 _sum: { total: true, amount: true },
             }),
             prisma.invoice.aggregate({
                 where: {
+                    ...userInvoiceScope,
                     status: { in: ["Pending", "Draft"] },
                     dueDate: { lt: now },
-                    userId,
                 },
                 _sum: { total: true, amount: true },
             }),
             prisma.invoice.findMany({
-                where: { userId },
+                where: userInvoiceScope,
                 take: 5,
                 orderBy: { date: "desc" },
                 select: {
@@ -130,15 +133,15 @@ export async function GET(req: NextRequest) {
             }),
             prisma.invoice.groupBy({
                 by: ["status"],
-                where: { userId },
+                where: userInvoiceScope,
                 _count: { _all: true },
             }),
             prisma.invoice.groupBy({
                 by: ["status"],
                 where: {
+                    ...userInvoiceScope,
                     status: { in: ["Pending", "Draft"] },
                     dueDate: { lt: now },
-                    userId,
                 },
                 _count: { _all: true },
             }),
@@ -155,11 +158,14 @@ export async function GET(req: NextRequest) {
                                 FROM "Invoice" i
                                 WHERE i."status" IN ('Pending', 'Draft')
                                     AND i."dueDate" < ${now}
-                                    AND i."userId" = ${userId}
+                                    AND (i."ownerUserId" = ${userId} OR i."userId" = ${userId})
                                     AND NOT EXISTS (
                                         SELECT 1
                                         FROM "Invoice" history
-                                        WHERE history."userId" = i."userId"
+                                        WHERE (
+                                            (history."ownerUserId" = ${userId} OR history."userId" = ${userId})
+                                            AND (history."ownerUserId" = i."ownerUserId" OR history."userId" = i."userId")
+                                        )
                                             AND COALESCE(history."clientName", '') = COALESCE(i."clientName", '')
                                             AND COALESCE(history."clientEmail", '') = COALESCE(i."clientEmail", '')
                                             AND history."date" <= ${threeYearsAgo}
@@ -210,13 +216,17 @@ export async function GET(req: NextRequest) {
         // Find latest invoices for all high-risk clients at once to avoid N+1 problem
         const latestInvoices = await prisma.invoice.findMany({
             where: {
-                userId,
+                AND: [
+                    userInvoiceScope,
+                    {
+                        OR: customerIdentifiers.map(c => ({
+                            clientName: c.name,
+                            clientEmail: c.email
+                        }))
+                    }
+                ],
                 status: { in: ["Pending", "Draft"] },
                 dueDate: { lt: now },
-                OR: customerIdentifiers.map(c => ({
-                    clientName: c.name,
-                    clientEmail: c.email
-                }))
             },
             orderBy: { date: "desc" },
             distinct: ["clientName", "clientEmail"],
@@ -224,7 +234,7 @@ export async function GET(req: NextRequest) {
         });
 
         const highRiskCustomers = highRiskCustomersData.map(group => {
-            const latest = latestInvoices.find(li => 
+            const latest = latestInvoices.find(li =>
                 li.clientName === group.clientName && li.clientEmail === group.clientEmail
             );
             return {

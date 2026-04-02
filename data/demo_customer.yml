@@ -1,0 +1,15 @@
+customers:
+  - name: Om Mistry
+    email: ommistry5559@gmail.com
+    phone: '+91 98765 43210'
+    address: '12 Riverfront Road, Ahmedabad, Gujarat'
+
+  - name: Priya Shah
+    email: priya.shah@acmesupplies.in
+    phone: '+91 99887 77665'
+    address: '44 Market Street, Nadiad, Gujarat'
+
+  - name: Rohan Patel
+    email: rohan.patel@northwind.co
+    phone: '+91 90909 11223'
+    address: '7 Industrial Estate, Anand, Gujarat'

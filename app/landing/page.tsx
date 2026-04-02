@@ -26,7 +26,7 @@ export default function LandingPage() {
       <Header />
 
       {/* Main Content */}
-      <main className='flex-1 pt-16 md:pt-20'>
+      <main className='flex-1'>
         {/* Hero Section */}
         <Hero onGetStarted={handleGetStarted} onDemo={handleDemo} />
 

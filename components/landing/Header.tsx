@@ -69,7 +69,7 @@ export default function Header() {
         {/* Right Section */}
         <div className='flex items-center gap-3 md:gap-4'>
           <Button asChild variant='ghost' size='sm' className='hidden sm:flex text-[#596778] hover:text-[#8B5CF6] text-sm md:text-base'>
-            <Link href='/register'>Sign In</Link>
+            <Link href='/login'>Sign In</Link>
           </Button>
           <Button asChild size='sm' className='hidden sm:flex text-xs md:text-sm'>
             <Link href='/register'>Get Started</Link>
@@ -106,7 +106,7 @@ export default function Header() {
             ))}
             <div className='flex gap-2 pt-3 border-t border-[#E5E7EB] mt-3'>
               <Button asChild variant='secondary' size='sm' className='w-full'>
-                <Link href='/register'>Sign In</Link>
+                <Link href='/login'>Sign In</Link>
               </Button>
               <Button asChild size='sm' className='w-full'>
                 <Link href='/register'>Get Started</Link>

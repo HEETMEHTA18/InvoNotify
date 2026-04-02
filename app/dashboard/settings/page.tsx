@@ -28,11 +28,13 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [decodingQr, setDecodingQr] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
 
     const logoInputRef = useRef<HTMLInputElement>(null);
     const signatureInputRef = useRef<HTMLInputElement>(null);
+    const paymentQrInputRef = useRef<HTMLInputElement>(null);
 
     // Signature drawing
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,6 +112,50 @@ export default function SettingsPage() {
             }
         };
         reader.readAsDataURL(file);
+    }
+
+    async function handlePaymentQrUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+
+        if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type)) {
+            setError("Please upload a JPG, PNG, or WEBP image");
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setError("QR image must be smaller than 5MB");
+            return;
+        }
+
+        try {
+            setError("");
+            setDecodingQr(true);
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/settings/payment-qr/decode", {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || "Failed to decode QR image");
+                return;
+            }
+
+            setPaymentQrPayload(data.payload || "");
+            setPaymentQrEnabled(true);
+            setSuccess(false);
+        } catch {
+            setError("Failed to decode QR image");
+        } finally {
+            setDecodingQr(false);
+        }
     }
 
     // Canvas drawing functions
@@ -312,6 +358,12 @@ export default function SettingsPage() {
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Uploading image to cloud...
+                </div>
+            )}
+            {decodingQr && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Reading payment QR from image...
                 </div>
             )}
 
@@ -608,7 +660,29 @@ export default function SettingsPage() {
                     </label>
 
                     <div>
-                        <label className="block text-xs text-gray-500 mb-1">Base QR Payload</label>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                            <label className="block text-xs text-gray-500">Base QR Payload</label>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={decodingQr}
+                                onClick={() => paymentQrInputRef.current?.click()}
+                                className="h-8 text-xs"
+                            >
+                                {decodingQr ? (
+                                    <>
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        Decoding...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="h-3.5 w-3.5" />
+                                        Upload QR Image
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                         <textarea
                             value={paymentQrPayload}
                             onChange={(e) => setPaymentQrPayload(e.target.value)}
@@ -617,8 +691,15 @@ export default function SettingsPage() {
                             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                            Tip: Paste the raw UPI QR payload. We automatically inject the amount and invoice reference.
+                            Tip: Paste the raw UPI payload or upload your QR image (JPG/PNG/WEBP). We automatically inject amount and invoice reference.
                         </p>
+                        <input
+                            ref={paymentQrInputRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            className="hidden"
+                            onChange={handlePaymentQrUpload}
+                        />
                     </div>
                 </div>
             </div>
