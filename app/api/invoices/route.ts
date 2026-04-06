@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { normalizeReminderSettings, normalizeReminderChannel } from "@/lib/reminders";
+import { normalizeReminderSettings } from "@/lib/reminders";
+import { calculateCibilScoreFromInvoices, normalizeCustomerKey } from "@/lib/customer-credit";
 
 function parsePositiveInt(value: string | null, fallback: number) {
   if (!value) return fallback;
@@ -220,11 +221,6 @@ export async function POST(req: NextRequest) {
       currency,
       note,
       items, // Array of { description, quantity, rate, amount }
-      autoReminderEnabled,
-      reminderOffsets,
-      overdueReminderEnabled,
-      overdueReminderEveryDays,
-      reminderChannel,
     } = data;
 
     if (!clientName || !date || !items || items.length === 0) {
@@ -312,12 +308,27 @@ export async function POST(req: NextRequest) {
       },
     };
 
+    const normalizedClientName = normalizeCustomerKey(clientName);
+    const normalizedClientEmail = normalizeCustomerKey(clientEmail || "");
+    const customerCandidates = await prisma.customer.findMany({
+      where: { ownerUserId: session.user.id },
+      select: { id: true, name: true, email: true },
+    });
+    const matchedCustomer = customerCandidates.find((candidate) => {
+      const nameMatch = normalizedClientName.length > 0 && normalizeCustomerKey(candidate.name) === normalizedClientName;
+      const emailMatch =
+        normalizedClientEmail.length > 0 && normalizeCustomerKey(candidate.email || "") === normalizedClientEmail;
+      return nameMatch || emailMatch;
+    });
+
     let invoice;
     try {
       invoice = await prisma.invoice.create({
         data: {
           ...commonCreateData,
           ownerUserId: session.user.id,
+          userId: session.user.id,
+          customerId: matchedCustomer?.id ?? null,
           // Reminder Settings
           autoReminderEnabled: reminderSettings.autoReminderEnabled,
           reminderOffsets: reminderSettings.reminderOffsets,
@@ -342,6 +353,7 @@ export async function POST(req: NextRequest) {
           data: {
             ...commonCreateData,
             userId: session.user.id,
+            customerId: matchedCustomer?.id ?? null,
           },
           include: { items: true },
         });
@@ -411,6 +423,33 @@ export async function POST(req: NextRequest) {
           firstInvoiceAt: new Date(date),
         },
       });
+
+      const customerInvoices = await prisma.invoice.findMany({
+        where: { customerId: invoice.customerId, OR: [{ ownerUserId: session.user.id }, { userId: session.user.id }] },
+        select: {
+          status: true,
+          dueDate: true,
+          total: true,
+          amountPaid: true,
+          balance: true,
+        },
+      });
+
+      const score = calculateCibilScoreFromInvoices(
+        customerInvoices.map((inv) => ({
+          status: inv.status,
+          dueDate: inv.dueDate,
+          total: Number(inv.total || 0),
+          amountPaid: Number(inv.amountPaid || 0),
+          balance: Number(inv.balance || 0),
+        }))
+      );
+
+      await prisma.$executeRaw`
+        UPDATE "Customer"
+        SET "cibilScore" = ${score}, "updatedAt" = NOW()
+        WHERE id = ${invoice.customerId} AND "ownerUserId" = ${session.user.id}
+      `;
     }
 
     return NextResponse.json(invoice, { status: 201 });

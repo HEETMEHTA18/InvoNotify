@@ -1,6 +1,6 @@
 "use client";
 
-import { HomeIcon, FileText, Settings, ShoppingBag } from "lucide-react";
+import { HomeIcon, FileText, Settings, ShoppingBag, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,12 @@ export const dashboardLinks = [
     },
     {
         id: 3,
+        name: "Customers",
+        href: "/dashboard/customers",
+        icon: Users,
+    },
+    {
+        id: 4,
         name: "Settings",
         href: "/dashboard/settings",
         icon: Settings,

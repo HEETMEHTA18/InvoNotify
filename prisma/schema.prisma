@@ -1,3 +1,9 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,15 +20,17 @@ model User {
   email         String          @unique
   emailVerified DateTime?
   image         String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
   password      String?
   accounts      Account[]
-  Authenticator Authenticator[]
-  invoices      Invoice[]
   sessions      Session[]
+  invoices      Invoice[]
   customers     Customer[]
   products      Product[]
+  // Optional for WebAuthn support
+  Authenticator Authenticator[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Account {
@@ -37,9 +45,11 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([provider, providerAccountId])
 }
@@ -48,9 +58,10 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model VerificationToken {
@@ -61,6 +72,7 @@ model VerificationToken {
   @@id([identifier, token])
 }
 
+// Optional for WebAuthn support
 model Authenticator {
   credentialID         String  @unique
   userId               String
@@ -70,7 +82,8 @@ model Authenticator {
   credentialDeviceType String
   credentialBackedUp   Boolean
   transports           String?
-  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, credentialID])
 }
@@ -143,45 +156,44 @@ model InvoiceItem {
 }
 
 model Customer {
-  id               Int       @id @default(autoincrement())
-  name             String
-  group            String?
-  openingBalance   Decimal   @default(0) @db.Decimal(10, 2)
-  address          String?
-  city             String?
-  state            String?
-  country          String?
-  gstin            String?
-  phone            String?
-  email            String?
-  /// Date of their very first invoice — used to determine "regular customer (2+ years)" status
-  firstInvoiceAt   DateTime?
-  /// When true, this customer is exempt from automatic reminder emails.
-  /// The client can still send reminders manually per-invoice.
-  isVipExempt      Boolean   @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  ownerUserId      String?
-  user             User?     @relation(fields: [ownerUserId], references: [id])
-  invoices         Invoice[]
+  id             Int       @id @default(autoincrement())
+  name           String
+  group          String?
+  openingBalance Decimal   @default(0) @db.Decimal(10, 2)
+  address        String?
+  city           String?
+  state          String?
+  country        String?
+  gstin          String?
+  phone          String?
+  email          String?
+  firstInvoiceAt DateTime?
+  isVipExempt    Boolean   @default(false)
+  cibilScore     Int       @default(650)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  ownerUserId    String?
+  user           User?     @relation(fields: [ownerUserId], references: [id])
+  invoices       Invoice[]
 
   @@index([ownerUserId])
   @@index([ownerUserId, name])
+  @@index([ownerUserId, cibilScore])
   @@unique([name, ownerUserId])
 }
 
 model CompanySettings {
-  id        Int      @id @default(autoincrement())
-  userId    String   @unique
-  logo      String?
-  signature String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  address   String?
-  email     String?
-  name      String?
-  phone     String?
-  paymentQrEnabled Boolean @default(false)
+  id               Int      @id @default(autoincrement())
+  userId           String   @unique
+  logo             String?
+  signature        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  address          String?
+  email            String?
+  name             String?
+  phone            String?
+  paymentQrEnabled Boolean  @default(false)
   paymentQrPayload String?
 }
 

@@ -43,7 +43,6 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
   const headerGradient = isAlert
     ? "linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%)"
     : "linear-gradient(135deg, #065f46 0%, #10b981 100%)";
-  const statusSymbol = isAlert ? "✕" : "✓";
   const statusLabel = isAlert ? "Overdue" : "Pending";
   const reminderLabel = reminderBadge || (isAlert ? "OVERDUE" : "REMINDER");
   const statusHeading = isAlert ? "Overdue Payment Alert" : "Pending Payment Reminder";
@@ -139,11 +138,6 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
       text-transform: uppercase;
       white-space: nowrap;
     }
-    .badge-symbol {
-      margin-right: 6px;
-      font-weight: 900;
-      line-height: 1;
-    }
     .section {
       padding: 24px;
       border-bottom: 8px solid #f3f4f6;
@@ -154,32 +148,6 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
     .top-section {
       text-align: center;
       padding: 32px 24px;
-    }
-    .status-icon {
-      width: 48px;
-      height: 48px;
-      background-color: ${isAlert ? "#fee2e2" : "#d1fae5"};
-      border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-    }
-    .status-icon-inner {
-      width: 24px;
-      height: 24px;
-      background-color: ${isAlert ? "#dc2626" : "#10b981"};
-      border-radius: 50%;
-      display: inline-block;
-      position: relative;
-    }
-    /* Symbol for payment state */
-    .status-icon-inner::after {
-      content: '${statusSymbol}';
-      color: white;
-      font-weight: bold;
-      font-size: 16px;
-      line-height: 24px;
     }
     .amount {
       font-size: 32px;
@@ -258,20 +226,17 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
       <div class="brand-wrap">
         ${logoUrl
       ? `<img src="${logoUrl}" alt="${senderName} logo" class="brand-logo" />`
-      : `<div class="brand-fallback">${statusSymbol}</div>`}
+      : `<div class="brand-fallback">${(senderName || "I").charAt(0).toUpperCase()}</div>`}
         <div>
           <p class="brand-title">${senderName}</p>
           <p class="brand-subtitle">Invoice Notification</p>
         </div>
       </div>
-      <span class="badge"><span class="badge-symbol">${statusSymbol}</span>${reminderLabel}</span>
+      <span class="badge">${reminderLabel}</span>
     </div>
 
     <!-- Header / Status Section -->
     <div class="section top-section">
-      <div class="status-icon">
-        <div class="status-icon-inner"></div>
-      </div>
       <h1 class="amount">${currency} ${amountDue}</h1>
       <p class="status-text">${statusHeading}</p>
       <p class="status-subtext">${statusSubheading}</p>
@@ -291,7 +256,7 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
         </tr>
         <tr class="data-row">
           <td class="label">Status</td>
-          <td class="value" style="color: ${badgeColor}">${statusSymbol} ${statusLabel}</td>
+          <td class="value" style="color: ${badgeColor}">${statusLabel}</td>
         </tr>
         <tr class="data-row">
           <td class="label">Due On</td>

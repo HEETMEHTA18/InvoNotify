@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { User, LogOut, LayoutDashboard, FileText } from "lucide-react";
+import { User, LogOut, LayoutDashboard, FileText, Users, Settings } from "lucide-react";
 import { signOut } from "next-auth/react";
 import {
     DropdownMenu,
@@ -48,6 +48,20 @@ export function UserNav() {
                     <Link href="/dashboard/profile" className="flex w-full items-center gap-2 px-2 py-1.5">
                         <User className="h-4 w-4 text-gray-400 group-hover:text-gray-900" />
                         <span className="text-sm">Profile</span>
+                    </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-gray-100 rounded-md transition-colors">
+                    <Link href="/dashboard/customers" className="flex w-full items-center gap-2 px-2 py-1.5">
+                        <Users className="h-4 w-4 text-gray-400 group-hover:text-gray-900" />
+                        <span className="text-sm">Customers</span>
+                    </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-gray-100 rounded-md transition-colors">
+                    <Link href="/dashboard/settings" className="flex w-full items-center gap-2 px-2 py-1.5">
+                        <Settings className="h-4 w-4 text-gray-400 group-hover:text-gray-900" />
+                        <span className="text-sm">Settings</span>
                     </Link>
                 </DropdownMenuItem>
                 

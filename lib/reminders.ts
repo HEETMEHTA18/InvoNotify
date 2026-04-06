@@ -133,24 +133,25 @@ export function getReminderMatchForDate(args: {
 }
 
 export function getReminderSubject(args: {
-  invoiceNumber: string;
+  customerName: string;
   reminderType: ReminderType;
   daysUntilDue: number;
   daysOverdue: number;
 }) {
-  const { invoiceNumber, reminderType, daysUntilDue, daysOverdue } = args;
+  const { customerName, reminderType, daysUntilDue, daysOverdue } = args;
+  const safeName = customerName?.trim() || "Customer";
 
   if (reminderType === "BEFORE_DUE") {
     const suffix = daysUntilDue === 1 ? "day" : "days";
-    return `Reminder: Invoice #${invoiceNumber} is due in ${daysUntilDue} ${suffix}`;
+    return `Reminder: ${safeName} payment is due in ${daysUntilDue} ${suffix}`;
   }
   if (reminderType === "DUE_DATE") {
-    return `Due Today: Invoice #${invoiceNumber}`;
+    return `Due Today: ${safeName} payment reminder`;
   }
   if (reminderType === "OVERDUE_REPEAT") {
     const suffix = daysOverdue === 1 ? "day" : "days";
-    return `Overdue Reminder: Invoice #${invoiceNumber} (${daysOverdue} ${suffix} overdue)`;
+    return `Overdue Reminder: ${safeName} (${daysOverdue} ${suffix} overdue)`;
   }
 
-  return `Payment Reminder: Invoice #${invoiceNumber}`;
+  return `Payment Reminder: ${safeName}`;
 }

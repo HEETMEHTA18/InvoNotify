@@ -4,7 +4,7 @@ transactions:
     due_date: 2026-04-07
     invoice_no: TEST-RMD-7D
     party_ledger: Reminder Test Client A
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543210"
     status: Pending
     auto_reminder_enabled: true
@@ -27,7 +27,7 @@ transactions:
     due_date: 2026-04-03
     invoice_no: TEST-RMD-3D
     party_ledger: Reminder Test Client B
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543211"
     status: Pending
     auto_reminder_enabled: true
@@ -50,7 +50,7 @@ transactions:
     due_date: 2026-04-01
     invoice_no: TEST-RMD-1D
     party_ledger: Reminder Test Client C
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543212"
     status: Pending
     auto_reminder_enabled: true
@@ -73,7 +73,7 @@ transactions:
     due_date: 2026-03-31
     invoice_no: TEST-RMD-DUE-TODAY
     party_ledger: Reminder Test Client D
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543213"
     status: Pending
     auto_reminder_enabled: true
@@ -96,7 +96,7 @@ transactions:
     due_date: 2026-03-30
     invoice_no: TEST-RMD-OD-1
     party_ledger: Reminder Test Client E
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543214"
     status: Pending
     auto_reminder_enabled: true
@@ -119,7 +119,7 @@ transactions:
     due_date: 2026-03-28
     invoice_no: TEST-RMD-OD-3
     party_ledger: Reminder Test Client F
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543215"
     status: Pending
     auto_reminder_enabled: true
@@ -142,7 +142,7 @@ transactions:
     due_date: 2026-03-24
     invoice_no: TEST-RMD-OD-7
     party_ledger: Reminder Test Client G
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543216"
     status: Pending
     auto_reminder_enabled: true
@@ -165,7 +165,7 @@ transactions:
     due_date: 2026-03-20
     invoice_no: TEST-RMD-PAID-OD
     party_ledger: Reminder Test Client H
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543217"
     status: Paid
     amount_paid: 11800
@@ -189,7 +189,7 @@ transactions:
     due_date: 2026-03-29
     invoice_no: TEST-RMD-NO-AUTO
     party_ledger: Reminder Test Client I
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543218"
     status: Pending
     auto_reminder_enabled: false
@@ -212,7 +212,7 @@ transactions:
     due_date: 2026-03-31
     invoice_no: TEST-RMD-PENDING-TODAY
     party_ledger: Reminder Test Client J
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543219"
     status: Pending
     auto_reminder_enabled: true
@@ -235,7 +235,7 @@ transactions:
     due_date: 2026-03-30
     invoice_no: TEST-RMD-LOYAL-3Y-OD
     party_ledger: Reminder Test Loyal Client K
-    client_email: heetmehta18125@gmail.com
+    client_email: cenadil984@algarr.com
     client_phone: "+919876543220"
     status: Pending
     auto_reminder_enabled: true

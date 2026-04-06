@@ -76,7 +76,7 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
   );
 
   const subject = getReminderSubject({
-    invoiceNumber: invoice.invoiceNumber,
+    customerName: invoice.clientName || invoice.customer || "Customer",
     reminderType: params.reminderType,
     daysUntilDue: params.daysUntilDue ?? 0,
     daysOverdue: params.daysOverdue ?? 0,
