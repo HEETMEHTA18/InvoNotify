@@ -10,7 +10,6 @@ import {
     Pencil,
     Loader2,
     ShoppingBag,
-    Package,
 } from "lucide-react";
 import {
     Dialog,

@@ -1,11 +1,10 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Pencil, Download, Mail, Trash2, Upload, Eye } from "lucide-react";
+import { MoreHorizontal, Pencil, Download, Trash2, Upload, Eye } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 

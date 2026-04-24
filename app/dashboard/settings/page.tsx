@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
     Upload,
@@ -438,9 +439,12 @@ export default function SettingsPage() {
                         <div className="flex items-start gap-6">
                             <div className="relative group">
                                 <div className="w-40 h-40 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
-                                    <img
+                                    <Image
                                         src={logo}
                                         alt="Company Logo"
+                                        width={160}
+                                        height={160}
+                                        unoptimized
                                         className="max-w-full max-h-full object-contain p-2"
                                     />
                                 </div>
@@ -507,9 +511,12 @@ export default function SettingsPage() {
                         <div className="flex items-start gap-6">
                             <div className="relative group">
                                 <div className="w-64 h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
-                                    <img
+                                    <Image
                                         src={signature}
                                         alt="Signature"
+                                        width={256}
+                                        height={128}
+                                        unoptimized
                                         className="max-w-full max-h-full object-contain p-2"
                                     />
                                 </div>

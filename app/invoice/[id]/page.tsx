@@ -1,8 +1,9 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,19 +66,10 @@ function InvoiceDetailContent() {
     const [paymentQrDataUrl, setPaymentQrDataUrl] = useState<string | null>(null);
 
     useEffect(() => {
-        if (id) fetchInvoice();
-    }, [id]);
-
-    useEffect(() => {
         fetchSettings();
     }, []);
 
-    useEffect(() => {
-        if (searchParams.get("edit") === "true") setIsEditing(true);
-        if (searchParams.get("download") === "true" && invoice) handleDownload();
-    }, [searchParams, invoice]);
-
-    async function fetchInvoice() {
+    const fetchInvoice = useCallback(async () => {
         try {
             const res = await fetch(`/api/invoices/${id}`);
             if (!res.ok) throw new Error("Failed to fetch");
@@ -89,7 +81,7 @@ function InvoiceDetailContent() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [id]);
 
     async function fetchSettings() {
         try {
@@ -165,7 +157,7 @@ function InvoiceDetailContent() {
         }
     }
 
-    async function handleDownload() {
+    const handleDownload = useCallback(async () => {
         if (!invoiceRef.current) return;
         try {
             const canvas = await html2canvas(invoiceRef.current, { scale: 2 });
@@ -180,7 +172,20 @@ function InvoiceDetailContent() {
             console.error("PDF generation failed", err);
             alert("Failed to download PDF");
         }
-    }
+    }, [invoice?.invoiceNumber]);
+
+    useEffect(() => {
+        if (id) {
+            void fetchInvoice();
+        }
+    }, [id, fetchInvoice]);
+
+    useEffect(() => {
+        if (searchParams.get("edit") === "true") setIsEditing(true);
+        if (searchParams.get("download") === "true" && invoice) {
+            void handleDownload();
+        }
+    }, [searchParams, invoice, handleDownload]);
 
     function updateItem(index: number, field: keyof InvoiceItem, value: string | number) {
         if (!invoice) return;
@@ -448,9 +453,12 @@ function InvoiceDetailContent() {
                             <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col items-end">
                                 <p className="text-xs font-semibold text-[#8691A6] uppercase tracking-wide mb-2">Scan To Pay</p>
                                 <div className="bg-white border border-gray-200 rounded-lg p-3">
-                                    <img
+                                    <Image
                                         src={paymentQrDataUrl}
                                         alt="Payment QR"
+                                        width={144}
+                                        height={144}
+                                        unoptimized
                                         className="h-36 w-36 object-contain"
                                     />
                                 </div>
