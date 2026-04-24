@@ -46,6 +46,7 @@ export const MouseTrackerProvider = React.forwardRef<
   const [active, setActive] = React.useState(false);
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const pointerRef = React.useRef<HTMLDivElement>(null);
+  const { style: restStyle, ...divRest } = rest;
 
   React.useImperativeHandle(ref, () => wrapperRef.current as HTMLDivElement);
 
@@ -81,7 +82,12 @@ export const MouseTrackerProvider = React.forwardRef<
     <MouseTrackerContext.Provider
       value={{ position, active, wrapperRef, pointerRef }}
     >
-      <div ref={wrapperRef} data-role="tracker-wrapper" {...rest}>
+      <div
+        ref={wrapperRef}
+        data-role="tracker-wrapper"
+        style={{ ...restStyle, cursor: active ? "none" : restStyle?.cursor }}
+        {...divRest}
+      >
         {children}
       </div>
     </MouseTrackerContext.Provider>
@@ -94,21 +100,12 @@ export type PointerProps = HTMLMotionProps<"div"> & {
 
 export const Pointer = React.forwardRef<HTMLDivElement, PointerProps>(
   function Pointer({ className, style, children, ...rest }, ref) {
-    const { position, active, wrapperRef, pointerRef } = useMouseTracker();
+    const { position, active, pointerRef } = useMouseTracker();
 
     React.useImperativeHandle(ref, () => pointerRef.current as HTMLDivElement);
 
     const x = useMotionValue(0);
     const y = useMotionValue(0);
-
-    React.useEffect(() => {
-      const container = wrapperRef.current?.parentElement;
-      if (container && active) container.style.cursor = "none";
-
-      return () => {
-        if (container) container.style.cursor = "default";
-      };
-    }, [active, wrapperRef]);
 
     React.useEffect(() => {
       x.set(position.x);
@@ -174,13 +171,40 @@ export const PointerFollower = React.forwardRef<
 ) {
   const { position, active, pointerRef } = useMouseTracker();
   const followerRef = React.useRef<HTMLDivElement>(null);
+  const [pointerSize, setPointerSize] = React.useState({ width: 20, height: 20 });
+  const [followerSize, setFollowerSize] = React.useState({ width: 0, height: 0 });
 
   React.useImperativeHandle(ref, () => followerRef.current as HTMLDivElement);
 
-  const getOffset = React.useCallback(() => {
-    const box = followerRef.current?.getBoundingClientRect();
-    const w = box?.width ?? 0;
-    const h = box?.height ?? 0;
+  React.useLayoutEffect(() => {
+    if (!active) return;
+
+    const updateSizes = () => {
+      const pointerBox = pointerRef.current?.getBoundingClientRect();
+      const followerBox = followerRef.current?.getBoundingClientRect();
+
+      setPointerSize({
+        width: pointerBox?.width ?? 20,
+        height: pointerBox?.height ?? 20,
+      });
+      setFollowerSize({
+        width: followerBox?.width ?? 0,
+        height: followerBox?.height ?? 0,
+      });
+    };
+
+    updateSizes();
+
+    const resizeObserver = new ResizeObserver(updateSizes);
+    if (pointerRef.current) resizeObserver.observe(pointerRef.current);
+    if (followerRef.current) resizeObserver.observe(followerRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, [active, pointerRef]);
+
+  const offset = (() => {
+    const w = followerSize.width;
+    const h = followerSize.height;
 
     switch (align) {
       case "center":
@@ -204,12 +228,10 @@ export const PointerFollower = React.forwardRef<
       default:
         return { x: 0, y: 0 };
     }
-  }, [align, gap]);
+  })();
 
-  const offset = getOffset();
-  const pointerBox = pointerRef.current?.getBoundingClientRect();
-  const pw = pointerBox?.width ?? 20;
-  const ph = pointerBox?.height ?? 20;
+  const pw = pointerSize.width;
+  const ph = pointerSize.height;
 
   const x = position.x - offset.x + pw / 2;
   const y = position.y - offset.y + ph / 2;
