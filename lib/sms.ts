@@ -10,7 +10,9 @@ function smsConfigured() {
  * Sends an SMS message.
  * This intentionally hard-fails when an SMS provider is not configured.
  */
-export async function sendSMS() {
+export async function sendSMS(_to: string, _message: string) {
+    void [_to, _message];
+
     if (!smsConfigured()) {
         const error = new Error("SMS provider is not configured");
         (error as Error & { code?: string }).code = "SMS_NOT_CONFIGURED";
