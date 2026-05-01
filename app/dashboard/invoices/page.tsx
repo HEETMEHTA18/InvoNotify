@@ -62,7 +62,8 @@ export default function InvoicesPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] =
+    useState<Invoice | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tallyFileInputRef = useRef<HTMLInputElement>(null);
@@ -70,47 +71,54 @@ export default function InvoicesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const fetchInvoices = useCallback(async ({ reset = true }: { reset?: boolean } = {}) => {
-    if (reset) {
-      setIsLoading(true);
-      setError("");
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    try {
-      const cursorToUse = reset ? null : nextCursor;
-      const query = new URLSearchParams({
-        withItems: "false",
-        limit: String(PAGE_SIZE),
-      });
-
-      if (cursorToUse) {
-        query.set("cursor", String(cursorToUse));
+  const fetchInvoices = useCallback(
+    async ({ reset = true }: { reset?: boolean } = {}) => {
+      if (reset) {
+        setIsLoading(true);
+        setError("");
+      } else {
+        setIsLoadingMore(true);
       }
 
-      const res = await fetch(`/api/invoices?${query.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch");
+      try {
+        const cursorToUse = reset ? null : nextCursor;
+        const query = new URLSearchParams({
+          withItems: "false",
+          limit: String(PAGE_SIZE),
+        });
 
-      const payload = await res.json();
-      const pageData: Invoice[] = Array.isArray(payload) ? payload : payload.data || [];
-      const next = Array.isArray(payload) ? null : payload.nextCursor;
-      const more = Array.isArray(payload) ? false : Boolean(payload.hasMore);
+        if (cursorToUse) {
+          query.set("cursor", String(cursorToUse));
+        }
 
-      setInvoices((prev) => {
-        const merged = reset ? pageData : [...prev, ...pageData];
-        const deduped = Array.from(new Map(merged.map((inv) => [inv.id, inv])).values());
-        return deduped;
-      });
-      setNextCursor(typeof next === "number" ? next : null);
-      setHasMore(more);
-    } catch {
-      setError("Failed to load invoices. Please try again.");
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [nextCursor]);
+        const res = await fetch(`/api/invoices?${query.toString()}`);
+        if (!res.ok) throw new Error("Failed to fetch");
+
+        const payload = await res.json();
+        const pageData: Invoice[] = Array.isArray(payload)
+          ? payload
+          : payload.data || [];
+        const next = Array.isArray(payload) ? null : payload.nextCursor;
+        const more = Array.isArray(payload) ? false : Boolean(payload.hasMore);
+
+        setInvoices((prev) => {
+          const merged = reset ? pageData : [...prev, ...pageData];
+          const deduped = Array.from(
+            new Map(merged.map((inv) => [inv.id, inv])).values(),
+          );
+          return deduped;
+        });
+        setNextCursor(typeof next === "number" ? next : null);
+        setHasMore(more);
+      } catch {
+        setError("Failed to load invoices. Please try again.");
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [nextCursor],
+  );
 
   useEffect(() => {
     fetchInvoices({ reset: true });
@@ -123,11 +131,17 @@ export default function InvoicesPage() {
     }
   }, [searchParams]);
 
-  async function handleBulkImport(e: React.ChangeEvent<HTMLInputElement>, type: 'invoice' | 'customer') {
+  async function handleBulkImport(
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "invoice" | "customer",
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const endpoint = type === 'customer' ? "/api/customers/bulk-import" : "/api/invoices/bulk-import";
+    const endpoint =
+      type === "customer"
+        ? "/api/customers/bulk-import"
+        : "/api/invoices/bulk-import";
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -140,11 +154,12 @@ export default function InvoicesPage() {
         });
         const result = await res.json();
         if (res.ok) {
-          const msg = type === 'customer'
-            ? `Import successful: ${result.createdCount} records created.`
-            : `Imported ${result.createdCount} new invoices. ${result.skippedCount || 0} duplicates were skipped.`;
+          const msg =
+            type === "customer"
+              ? `Import successful: ${result.createdCount} records created.`
+              : `Imported ${result.createdCount} new invoices. ${result.skippedCount || 0} duplicates were skipped.`;
           toast.success(msg);
-          if (type === 'invoice') fetchInvoices({ reset: true });
+          if (type === "invoice") fetchInvoices({ reset: true });
         } else {
           toast.error(`Import failed: ${result.error || "Unknown error"}`);
         }
@@ -154,7 +169,8 @@ export default function InvoicesPage() {
       } finally {
         setIsLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
-        if (customerFileInputRef.current) customerFileInputRef.current.value = "";
+        if (customerFileInputRef.current)
+          customerFileInputRef.current.value = "";
       }
     };
     reader.readAsText(file);
@@ -175,10 +191,14 @@ export default function InvoicesPage() {
         });
         const result = await res.json();
         if (res.ok) {
-          toast.success(`Tally import successful: ${result.createdCount} invoices created. ${result.skippedCount || 0} duplicates skipped.`);
+          toast.success(
+            `Tally import successful: ${result.createdCount} invoices created. ${result.skippedCount || 0} duplicates skipped.`,
+          );
           fetchInvoices({ reset: true });
         } else {
-          toast.error(`Tally import failed: ${result.error || "Unknown error"}`);
+          toast.error(
+            `Tally import failed: ${result.error || "Unknown error"}`,
+          );
         }
       } catch (err) {
         toast.error("Tally import failed. Check console for details.");
@@ -198,8 +218,11 @@ export default function InvoicesPage() {
 
     if (statusFilter !== "all") {
       if (statusFilter === "Overdue") {
-        result = result.filter((inv) =>
-          inv.status === "Pending" && inv.dueDate && new Date(inv.dueDate) < now
+        result = result.filter(
+          (inv) =>
+            inv.status === "Pending" &&
+            inv.dueDate &&
+            new Date(inv.dueDate) < now,
         );
       } else {
         result = result.filter((inv) => inv.status === statusFilter);
@@ -212,7 +235,7 @@ export default function InvoicesPage() {
         (inv) =>
           (inv.clientName || inv.customer || "").toLowerCase().includes(q) ||
           (inv.invoiceNumber || "").toLowerCase().includes(q) ||
-          (inv.clientEmail || "").toLowerCase().includes(q)
+          (inv.clientEmail || "").toLowerCase().includes(q),
       );
     }
 
@@ -223,16 +246,23 @@ export default function InvoicesPage() {
     const currentDate = new Date();
 
     return {
-      totalRevenue: invoices.reduce((s, inv) => s + parseFloat(inv.total || inv.amount || "0"), 0),
+      totalRevenue: invoices.reduce(
+        (s, inv) => s + parseFloat(inv.total || inv.amount || "0"),
+        0,
+      ),
       paidCount: invoices.filter((inv) => inv.status === "Paid").length,
-      overdueCount: invoices.filter((inv) =>
-        inv.status === "Pending" && inv.dueDate && new Date(inv.dueDate) < currentDate
+      overdueCount: invoices.filter(
+        (inv) =>
+          inv.status === "Pending" &&
+          inv.dueDate &&
+          new Date(inv.dueDate) < currentDate,
       ).length,
     };
   }, [invoices]);
 
   async function handleDelete(inv: Invoice) {
-    if (!confirm(`Delete invoice ${inv.invoiceNumber || `#${inv.id}`}?`)) return;
+    if (!confirm(`Delete invoice ${inv.invoiceNumber || `#${inv.id}`}?`))
+      return;
     try {
       await fetch(`/api/invoices/${inv.id}`, { method: "DELETE" });
       fetchInvoices({ reset: true });
@@ -263,10 +293,14 @@ export default function InvoicesPage() {
 
   async function handleReminder(inv: Invoice) {
     try {
-      const res = await fetch(`/api/invoices/${inv.id}/reminder`, { method: "POST" });
+      const res = await fetch(`/api/invoices/${inv.id}/reminder`, {
+        method: "POST",
+      });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || `Reminder sent to ${inv.clientName || inv.customer}`);
+        toast.success(
+          data.message || `Reminder sent to ${inv.clientName || inv.customer}`,
+        );
       } else {
         toast.error(data.error || "Failed to send reminder");
       }
@@ -276,15 +310,24 @@ export default function InvoicesPage() {
   }
 
   async function handleRunAutoReminders() {
-    if (!confirm("Run auto-reminder scan for all overdue/upcoming invoices?")) return;
+    if (!confirm("Run auto-reminder scan for all overdue/upcoming invoices?"))
+      return;
     setIsLoading(true);
     try {
-      const res = await fetch("/api/reminders/auto", { method: "POST" });
+      const res = await fetch("/api/reminders/auto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manual: true }),
+      });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`${data.sentCount} reminder email(s) sent successfully. Skipped: ${data.skippedCount}, Failed: ${data.failedCount}`);
+        toast.success(
+          `${data.sentCount} reminder email(s) sent successfully. Skipped: ${data.skippedCount}, Failed: ${data.failedCount}`,
+        );
       } else {
-        toast.error("Failed to run reminders: " + (data.error || "Unknown error"));
+        toast.error(
+          "Failed to run reminders: " + (data.error || "Unknown error"),
+        );
       }
     } catch {
       toast.error("Error triggering auto reminders");
@@ -294,13 +337,19 @@ export default function InvoicesPage() {
   }
 
   async function handleVoiceCall() {
-    toast.info("Voice Reminders (AI Agent) will be available in a future update!", {
-      description: "We are currently improving the voice agent experience for Indian numbers.",
-      duration: 5000,
-    });
+    toast.info(
+      "Voice Reminders (AI Agent) will be available in a future update!",
+      {
+        description:
+          "We are currently improving the voice agent experience for Indian numbers.",
+        duration: 5000,
+      },
+    );
   }
 
-  const [settings, setSettings] = useState<{ logo: string | null; signature: string | null } | undefined>();
+  const [settings, setSettings] = useState<
+    { logo: string | null; signature: string | null } | undefined
+  >();
 
   async function getSettingsForPdf() {
     if (settings !== undefined) return settings;
@@ -332,7 +381,9 @@ export default function InvoicesPage() {
   async function handleDownload(inv: Invoice) {
     try {
       const [invoiceData, settingsData] = await Promise.all([
-        inv.items?.length ? Promise.resolve(inv) : fetchInvoiceDetailsForDownload(inv.id),
+        inv.items?.length
+          ? Promise.resolve(inv)
+          : fetchInvoiceDetailsForDownload(inv.id),
         getSettingsForPdf(),
       ]);
 
@@ -367,7 +418,9 @@ export default function InvoicesPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-            <p className="text-sm text-gray-500">Manage and track all your invoices</p>
+            <p className="text-sm text-gray-500">
+              Manage and track all your invoices
+            </p>
           </div>
         </div>
         <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0">
@@ -376,7 +429,7 @@ export default function InvoicesPage() {
             accept=".yml,.yaml,.json"
             className="hidden"
             ref={fileInputRef}
-            onChange={(e) => handleBulkImport(e, 'invoice')}
+            onChange={(e) => handleBulkImport(e, "invoice")}
           />
           <input
             type="file"
@@ -390,7 +443,7 @@ export default function InvoicesPage() {
             accept=".yml,.yaml,.json"
             className="hidden"
             ref={customerFileInputRef}
-            onChange={(e) => handleBulkImport(e, 'customer')}
+            onChange={(e) => handleBulkImport(e, "customer")}
           />
           <Button
             onClick={() => tallyFileInputRef.current?.click()}
@@ -440,7 +493,10 @@ export default function InvoicesPage() {
         {isLoading && invoices.length === 0 ? (
           // Skeleton stat cards
           [...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div
+              key={i}
+              className="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <Skeleton className="h-3 w-24 mb-3" />
@@ -455,8 +511,12 @@ export default function InvoicesPage() {
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Invoices</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{invoices.length}</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Total Invoices
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {invoices.length}
+                  </p>
                 </div>
                 <div className="h-10 w-10 rounded-lg bg-gray-50 flex items-center justify-center">
                   <FileText className="h-5 w-5 text-gray-600" />
@@ -466,7 +526,9 @@ export default function InvoicesPage() {
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Paid / Overdue</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Paid / Overdue
+                  </p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
                     <span className="text-green-600">{paidCount}</span>
                     <span className="text-gray-400 mx-1">/</span>
@@ -481,9 +543,15 @@ export default function InvoicesPage() {
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Revenue</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Total Revenue
+                  </p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
-                    ₹{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹
+                    {totalRevenue.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </p>
                 </div>
                 <div className="h-10 w-10 rounded-lg bg-gray-50 flex items-center justify-center">
@@ -517,10 +585,11 @@ export default function InvoicesPage() {
                 suppressHydrationWarning
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${statusFilter === status
-                  ? "bg-gray-900 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                  statusFilter === status
+                    ? "bg-gray-900 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
               >
                 {status === "all" ? "All" : status}
               </button>
@@ -534,7 +603,9 @@ export default function InvoicesPage() {
             className="p-2.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all disabled:opacity-50"
             title="Refresh"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
           </button>
         </div>
 
@@ -555,7 +626,10 @@ export default function InvoicesPage() {
           <>
             <div className="lg:hidden space-y-3 px-3 pb-5">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div
+                  key={i}
+                  className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
+                >
                   <div className="flex justify-between items-center mb-3">
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-5 w-16 rounded-full" />
@@ -575,25 +649,54 @@ export default function InvoicesPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Invoice", "Client", "Total", "Balance", "Status", "Date", "Due Date", "Actions"].map((h) => (
-                      <th key={h} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                    {[
+                      "Invoice",
+                      "Client",
+                      "Total",
+                      "Balance",
+                      "Status",
+                      "Date",
+                      "Due Date",
+                      "Actions",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {[...Array(6)].map((_, i) => (
                     <tr key={i}>
-                      <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-4 w-24" />
+                      </td>
                       <td className="px-6 py-4">
                         <Skeleton className="h-4 w-32 mb-1.5" />
                         <Skeleton className="h-3 w-24" />
                       </td>
-                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-8 w-24 rounded-lg" /></td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-8 w-24 rounded-lg" />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -642,7 +745,9 @@ export default function InvoicesPage() {
         invoice={selectedInvoiceForPayment}
         onSuccess={() => fetchInvoices({ reset: true })}
       />
-      <p className="hidden">Debug: {isLoading ? "Loading" : "Loaded"}, {invoices.length} invoices</p>
+      <p className="hidden">
+        Debug: {isLoading ? "Loading" : "Loaded"}, {invoices.length} invoices
+      </p>
     </div>
   );
 }

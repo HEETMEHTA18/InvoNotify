@@ -4,7 +4,11 @@ const MAX_REMINDER_OFFSET_DAYS = 30;
 
 export type ReminderChannel = (typeof REMINDER_CHANNEL_OPTIONS)[number];
 
-export type ReminderType = "BEFORE_DUE" | "DUE_DATE" | "OVERDUE_REPEAT" | "MANUAL";
+export type ReminderType =
+  | "BEFORE_DUE"
+  | "DUE_DATE"
+  | "OVERDUE_REPEAT"
+  | "MANUAL";
 
 export interface ReminderSettingsInput {
   autoReminderEnabled?: unknown;
@@ -32,7 +36,9 @@ export interface ScheduledReminderMatch {
 }
 
 function startOfUtcDay(input: Date) {
-  return new Date(Date.UTC(input.getUTCFullYear(), input.getUTCMonth(), input.getUTCDate()));
+  return new Date(
+    Date.UTC(input.getUTCFullYear(), input.getUTCMonth(), input.getUTCDate()),
+  );
 }
 
 function toDayKey(input: Date) {
@@ -54,23 +60,32 @@ export function normalizeReminderOffsets(value: unknown) {
 }
 
 export function normalizeReminderChannel(value: unknown): ReminderChannel {
-  void value;
+  const raw = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (raw === "SMS" || raw === "BOTH") {
+    return raw;
+  }
   return "EMAIL";
 }
 
-export function normalizeReminderSettings(input: ReminderSettingsInput): NormalizedReminderSettings {
+export function normalizeReminderSettings(
+  input: ReminderSettingsInput,
+): NormalizedReminderSettings {
   const dueDate = input.dueDate ? new Date(input.dueDate) : null;
   const hasValidDueDate = !!dueDate && !Number.isNaN(dueDate.getTime());
   const rawOffsets = normalizeReminderOffsets(input.reminderOffsets);
   const parsedEveryDays = Number(input.overdueReminderEveryDays);
   const reminderChannel = normalizeReminderChannel(input.reminderChannel);
 
-  const autoReminderEnabled = Boolean(input.autoReminderEnabled) && hasValidDueDate;
+  const autoReminderEnabled =
+    Boolean(input.autoReminderEnabled) && hasValidDueDate;
   const reminderOffsets = autoReminderEnabled ? rawOffsets : [];
   const overdueReminderEveryDays = Number.isInteger(parsedEveryDays)
     ? Math.min(30, Math.max(1, parsedEveryDays))
     : 3;
-  const overdueReminderEnabled = autoReminderEnabled && Boolean(input.overdueReminderEnabled);
+  const overdueReminderEnabled =
+    autoReminderEnabled && Boolean(input.overdueReminderEnabled);
 
   return {
     autoReminderEnabled,
@@ -81,13 +96,16 @@ export function normalizeReminderSettings(input: ReminderSettingsInput): Normali
   };
 }
 
-export function getReminderMatchForDate(args: {
-  dueDate: Date | null;
-  reminderOffsets: number[];
-  overdueReminderEnabled: boolean;
-  overdueReminderEveryDays: number;
-  now?: Date;
-}): ScheduledReminderMatch | null {
+export function getReminderMatchForDate(
+  args: {
+    dueDate: Date | null;
+    reminderOffsets: number[];
+    overdueReminderEnabled: boolean;
+    overdueReminderEveryDays: number;
+    now?: Date;
+  },
+  options?: { allowOverdueWithoutSettings?: boolean },
+): ScheduledReminderMatch | null {
   const {
     dueDate,
     reminderOffsets,
@@ -101,10 +119,13 @@ export function getReminderMatchForDate(args: {
   const dueDay = startOfUtcDay(dueDate);
   const today = startOfUtcDay(now);
   const msPerDay = 24 * 60 * 60 * 1000;
-  const daysUntilDue = Math.round((dueDay.getTime() - today.getTime()) / msPerDay);
+  const daysUntilDue = Math.round(
+    (dueDay.getTime() - today.getTime()) / msPerDay,
+  );
 
   if (daysUntilDue >= 0 && reminderOffsets.includes(daysUntilDue)) {
-    const reminderType: ReminderType = daysUntilDue === 0 ? "DUE_DATE" : "BEFORE_DUE";
+    const reminderType: ReminderType =
+      daysUntilDue === 0 ? "DUE_DATE" : "BEFORE_DUE";
     return {
       reminderType,
       reminderKey: `${reminderType}-${daysUntilDue}-${toDayKey(dueDay)}`,
@@ -114,10 +135,16 @@ export function getReminderMatchForDate(args: {
     };
   }
 
-  if (daysUntilDue < 0 && overdueReminderEnabled) {
+  if (
+    daysUntilDue < 0 &&
+    (overdueReminderEnabled || options?.allowOverdueWithoutSettings)
+  ) {
     const daysOverdue = Math.abs(daysUntilDue);
-    const every = Math.max(1, overdueReminderEveryDays);
-    // Always trigger on the very first day overdue, then according to frequency
+    const every = overdueReminderEnabled
+      ? Math.max(1, overdueReminderEveryDays)
+      : 3;
+    // Trigger on the first overdue day and then on the configured interval.
+    // This keeps overdue reminders predictable even when invoices are updated late.
     if (daysOverdue === 1 || daysOverdue % every === 0) {
       return {
         reminderType: "OVERDUE_REPEAT",

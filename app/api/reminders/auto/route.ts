@@ -7,7 +7,10 @@ import { sendInvoiceReminderById } from "@/lib/mail-service";
 export const runtime = "nodejs";
 
 function isReminderLogDuplicateError(error: unknown) {
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
     return true;
   }
 
@@ -20,7 +23,8 @@ function isReminderLogDuplicateError(error: unknown) {
 }
 
 function isCronAuthorized(req: NextRequest) {
-  const configuredSecret = process.env.CRON_SECRET || process.env.REMINDER_CRON_SECRET;
+  const configuredSecret =
+    process.env.CRON_SECRET || process.env.REMINDER_CRON_SECRET;
 
   const authHeader = req.headers.get("authorization");
   const bearer = authHeader?.startsWith("Bearer ")
@@ -36,7 +40,11 @@ function isCronAuthorized(req: NextRequest) {
   return bearer === configuredSecret || headerSecret === configuredSecret;
 }
 
-async function runAutoReminderSweep(now: Date, limitUserId?: string) {
+async function runAutoReminderSweep(
+  now: Date,
+  limitUserId?: string,
+  options?: { allowOverdueWithoutSettings?: boolean },
+) {
   const invoices = await prisma.invoice.findMany({
     where: {
       autoReminderEnabled: true,
@@ -72,13 +80,16 @@ async function runAutoReminderSweep(now: Date, limitUserId?: string) {
   const failures: Array<{ invoiceId: number; error: string }> = [];
 
   for (const invoice of invoices) {
-    const match = getReminderMatchForDate({
-      dueDate: invoice.dueDate,
-      reminderOffsets: (invoice.reminderOffsets as number[]) || [],
-      overdueReminderEnabled: invoice.overdueReminderEnabled,
-      overdueReminderEveryDays: invoice.overdueReminderEveryDays,
-      now,
-    });
+    const match = getReminderMatchForDate(
+      {
+        dueDate: invoice.dueDate,
+        reminderOffsets: (invoice.reminderOffsets as number[]) || [],
+        overdueReminderEnabled: invoice.overdueReminderEnabled,
+        overdueReminderEveryDays: invoice.overdueReminderEveryDays,
+        now,
+      },
+      options,
+    );
 
     if (!match) {
       skippedCount += 1;
@@ -155,6 +166,7 @@ export async function GET(req: NextRequest) {
   try {
     const cronAllowed = isCronAuthorized(req);
     let manualUserId: string | undefined;
+    const manualMode = req.nextUrl.searchParams.get("manual") === "true";
 
     if (!cronAllowed) {
       const session = await auth();
@@ -170,14 +182,27 @@ export async function GET(req: NextRequest) {
     // Cron trigger scans all accounts. Manual UI trigger scans only the current user's account.
     const limitUserId = cronAllowed ? undefined : manualUserId;
 
-    const result = await runAutoReminderSweep(new Date(), limitUserId);
+    const result = await runAutoReminderSweep(new Date(), limitUserId, {
+      allowOverdueWithoutSettings: manualMode && !cronAllowed,
+    });
     return NextResponse.json(result);
   } catch (error) {
     console.error("Auto reminder run failed:", error);
-    return NextResponse.json({ error: "Auto reminder run failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Auto reminder run failed" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
-  return GET(req);
+  const body = await req.json().catch(() => ({ manual: false }));
+
+  const manual = Boolean(body?.manual);
+  const url = new URL(req.url);
+  if (manual) {
+    url.searchParams.set("manual", "true");
+  }
+
+  return GET(new NextRequest(url, req));
 }
