@@ -1,0 +1,277 @@
+customers:
+  - name: Om Mistry
+    email: ommistry5559@gmail.com
+    phone: "+91 98765 43210"
+    address: "12 Riverfront Road, Ahmedabad, Gujarat"
+    city: Ahmedabad
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 18500
+    cibilScore: 782
+
+  - name: Heet Mehta
+    email: heetmehta18125@gmail.com
+    phone: "+91 98980 11225"
+    address: "88 Industrial Lane, Rajkot, Gujarat"
+    city: Rajkot
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 24600
+    cibilScore: 748
+
+  - name: Heet Personal
+    email: heetpersonal1812@gmail.com
+    phone: "+91 99770 18120"
+    address: "15 Commerce Park, Surat, Gujarat"
+    city: Surat
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 9600
+    cibilScore: 711
+
+  - name: Shrey Manufacturing
+    email: accounts@shreymanufacturing.in
+    phone: "+91 97123 44556"
+    address: "Plot 17, GIDC Estate, Vadodara, Gujarat"
+    city: Vadodara
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 42800
+    cibilScore: 803
+
+  - name: Apex Fasteners
+    email: billing@apexfasteners.in
+    phone: "+91 98221 33445"
+    address: "Sector 8, Industrial Estate, Rajkot, Gujarat"
+    city: Rajkot
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 31000
+    cibilScore: 774
+
+  - name: CraftBuild Traders
+    email: info@craftbuildtraders.in
+    phone: "+91 98990 55661"
+    address: "Warehouse 3, Narol, Ahmedabad, Gujarat"
+    city: Ahmedabad
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 15400
+    cibilScore: 729
+
+stock_items:
+  - name: Hammer Heavy Duty
+    rate: 320
+  - name: Screwdriver Set Pro
+    rate: 540
+  - name: PVC Pipe 1 inch
+    rate: 135
+  - name: Drill Machine 850W
+    rate: 4850
+  - name: Angle Grinder
+    rate: 3750
+  - name: Electrical Wire Roll
+    rate: 1650
+  - name: LED Flood Light
+    rate: 1200
+  - name: Modular Switch Board
+    rate: 2600
+  - name: Industrial Bearing Kit
+    rate: 5400
+  - name: Power Tool Starter Pack
+    rate: 11800
+  - name: Steel Rod 10mm
+    rate: 650
+  - name: Cement Bag
+    rate: 350
+
+transactions:
+  - voucher_type: "Sales"
+    date: "01-Apr-2025"
+    due_date: "16-Apr-2025"
+    invoice_no: "HB-DEMO-001"
+    party_ledger: "Om Mistry"
+    client_email: "ommistry5559@gmail.com"
+    client_phone: "+91 98765 43210"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "EMAIL"
+    inventory:
+      - item_name: "Hammer Heavy Duty"
+        quantity: 24
+        rate: 320
+        amount: 7680
+      - item_name: "PVC Pipe 1 inch"
+        quantity: 60
+        rate: 135
+        amount: 8100
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 1426.2
+      - ledger_name: "Output SGST"
+        amount: 1426.2
+    narration: "Large hardware restock for retail counter"
+
+  - voucher_type: "Sales"
+    date: "03-Apr-2025"
+    due_date: "18-Apr-2025"
+    invoice_no: "HB-DEMO-002"
+    party_ledger: "Heet Mehta"
+    client_email: "heetmehta18125@gmail.com"
+    client_phone: "+91 98980 11225"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "BOTH"
+    inventory:
+      - item_name: "Drill Machine 850W"
+        quantity: 8
+        rate: 4850
+        amount: 38800
+      - item_name: "Angle Grinder"
+        quantity: 4
+        rate: 3750
+        amount: 15000
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 4842.0
+      - ledger_name: "Output SGST"
+        amount: 4842.0
+    narration: "Bulk tool supply for contractor inventory"
+
+  - voucher_type: "Sales"
+    date: "05-Apr-2025"
+    due_date: "20-Apr-2025"
+    invoice_no: "HB-DEMO-003"
+    party_ledger: "Heet Personal"
+    client_email: "heetpersonal1812@gmail.com"
+    client_phone: "+91 99770 18120"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 2
+    reminder_channel: "EMAIL"
+    inventory:
+      - item_name: "Electrical Wire Roll"
+        quantity: 15
+        rate: 1650
+        amount: 24750
+      - item_name: "LED Flood Light"
+        quantity: 18
+        rate: 1200
+        amount: 21600
+      - item_name: "Modular Switch Board"
+        quantity: 7
+        rate: 2600
+        amount: 18200
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 11448.9
+      - ledger_name: "Output SGST"
+        amount: 11448.9
+    narration: "Commercial electrical supply batch"
+
+  - voucher_type: "Sales"
+    date: "07-Apr-2025"
+    due_date: "22-Apr-2025"
+    invoice_no: "HB-DEMO-004"
+    party_ledger: "Shrey Manufacturing"
+    client_email: "accounts@shreymanufacturing.in"
+    client_phone: "+91 97123 44556"
+    status: "Paid"
+    amount_paid: 85140
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "EMAIL"
+    inventory:
+      - item_name: "Industrial Bearing Kit"
+        quantity: 10
+        rate: 5400
+        amount: 54000
+      - item_name: "Power Tool Starter Pack"
+        quantity: 3
+        rate: 11800
+        amount: 35400
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 8035.2
+      - ledger_name: "Output SGST"
+        amount: 8035.2
+    narration: "Large paid industrial order"
+
+  - voucher_type: "Sales"
+    date: "10-Apr-2025"
+    due_date: "25-Apr-2025"
+    invoice_no: "HB-DEMO-005"
+    party_ledger: "Apex Fasteners"
+    client_email: "billing@apexfasteners.in"
+    client_phone: "+91 98221 33445"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "EMAIL"
+    inventory:
+      - item_name: "Steel Rod 10mm"
+        quantity: 40
+        rate: 650
+        amount: 26000
+      - item_name: "Cement Bag"
+        quantity: 80
+        rate: 350
+        amount: 28000
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 4860.0
+      - ledger_name: "Output SGST"
+        amount: 4860.0
+    narration: "Construction materials for bulk site delivery"
+
+  - voucher_type: "Sales"
+    date: "12-Apr-2025"
+    due_date: "27-Apr-2025"
+    invoice_no: "HB-DEMO-006"
+    party_ledger: "CraftBuild Traders"
+    client_email: "info@craftbuildtraders.in"
+    client_phone: "+91 98990 55661"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "BOTH"
+    inventory:
+      - item_name: "Hammer Heavy Duty"
+        quantity: 20
+        rate: 320
+        amount: 6400
+      - item_name: "Screwdriver Set Pro"
+        quantity: 20
+        rate: 540
+        amount: 10800
+      - item_name: "Industrial Bearing Kit"
+        quantity: 4
+        rate: 5400
+        amount: 21600
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 5112.0
+      - ledger_name: "Output SGST"
+        amount: 5112.0
+    narration: "Mixed hardware shipment for distributor resale"
+

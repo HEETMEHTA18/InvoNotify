@@ -1,0 +1,49 @@
+customers:
+  - name: Om Mistry
+    email: ommistry5559@gmail.com
+    phone: "+91 98765 43210"
+    address: "12 Riverfront Road, Ahmedabad, Gujarat"
+    city: Ahmedabad
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 18500
+    cibilScore: 782
+    gstin: "24AABCH1234Q1Z9"
+
+  - name: Heet Mehta
+    email: heetmehta18125@gmail.com
+    phone: "+91 98980 11225"
+    address: "88 Industrial Lane, Rajkot, Gujarat"
+    city: Rajkot
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 24600
+    cibilScore: 748
+    gstin: "24AABCH5678R1Z4"
+
+  - name: Heet Personal
+    email: heetpersonal1812@gmail.com
+    phone: "+91 99770 18120"
+    address: "15 Commerce Park, Surat, Gujarat"
+    city: Surat
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 9600
+    cibilScore: 711
+    gstin: "24AABCH9012S1Z1"
+
+  - name: Shrey Manufacturing
+    email: accounts@shreymanufacturing.in
+    phone: "+91 97123 44556"
+    address: "Plot 17, GIDC Estate, Vadodara, Gujarat"
+    city: Vadodara
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 42800
+    cibilScore: 803
+    gstin: "24AAJCS1111M1Z8"
+

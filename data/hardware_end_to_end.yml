@@ -1,0 +1,122 @@
+customers:
+  - name: Om Mistry
+    email: ommistry5559@gmail.com
+    phone: "+91 98765 43210"
+    address: "12 Riverfront Road, Ahmedabad, Gujarat"
+    city: Ahmedabad
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 18500
+    cibilScore: 782
+
+  - name: Heet Mehta
+    email: heetmehta18125@gmail.com
+    phone: "+91 98980 11225"
+    address: "88 Industrial Lane, Rajkot, Gujarat"
+    city: Rajkot
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 24600
+    cibilScore: 748
+
+  - name: Heet Personal
+    email: heetpersonal1812@gmail.com
+    phone: "+91 99770 18120"
+    address: "15 Commerce Park, Surat, Gujarat"
+    city: Surat
+    state: Gujarat
+    country: India
+    group: Sundry Debtors
+    openingBalance: 9600
+    cibilScore: 711
+
+transactions:
+  - voucher_type: "Sales"
+    date: "05-Apr-2025"
+    due_date: "20-Apr-2025"
+    invoice_no: "HW-E2E-001"
+    party_ledger: "Om Mistry"
+    client_email: "ommistry5559@gmail.com"
+    client_phone: "+91 98765 43210"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 2
+    reminder_channel: "EMAIL"
+    inventory:
+      - item_name: "Hammer Heavy Duty"
+        quantity: 12
+        rate: 320
+        amount: 3840
+      - item_name: "PVC Pipe 1 inch"
+        quantity: 25
+        rate: 135
+        amount: 3375
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 650.7
+      - ledger_name: "Output SGST"
+        amount: 650.7
+    narration: "Hardware replenishment for retail outlet"
+
+  - voucher_type: "Sales"
+    date: "08-Apr-2025"
+    due_date: "23-Apr-2025"
+    invoice_no: "HW-E2E-002"
+    party_ledger: "Heet Mehta"
+    client_email: "heetmehta18125@gmail.com"
+    client_phone: "+91 98980 11225"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "BOTH"
+    inventory:
+      - item_name: "Drill Machine 850W"
+        quantity: 4
+        rate: 4850
+        amount: 19400
+      - item_name: "Angle Grinder"
+        quantity: 2
+        rate: 3750
+        amount: 7500
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 2439.0
+      - ledger_name: "Output SGST"
+        amount: 2439.0
+    narration: "Construction equipment order with email and SMS reminders"
+
+  - voucher_type: "Sales"
+    date: "12-Apr-2025"
+    due_date: "27-Apr-2025"
+    invoice_no: "HW-E2E-003"
+    party_ledger: "Heet Personal"
+    client_email: "heetpersonal1812@gmail.com"
+    client_phone: "+91 99770 18120"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "EMAIL"
+    inventory:
+      - item_name: "Electrical Wire Roll"
+        quantity: 10
+        rate: 1650
+        amount: 16500
+      - item_name: "LED Flood Light"
+        quantity: 6
+        rate: 1200
+        amount: 7200
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 2130.3
+      - ledger_name: "Output SGST"
+        amount: 2130.3
+    narration: "Electrical install supply for project execution"
+

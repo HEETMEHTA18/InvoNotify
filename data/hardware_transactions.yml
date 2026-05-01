@@ -1,0 +1,130 @@
+transactions:
+  - voucher_type: "Sales"
+    date: "05-Apr-2025"
+    due_date: "20-Apr-2025"
+    invoice_no: "HW-INV-001"
+    party_ledger: "Om Mistry"
+    client_email: "ommistry5559@gmail.com"
+    client_phone: "+91 98765 43210"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 2
+    reminder_channel: "EMAIL"
+    sales_ledger: "Sales Account"
+    inventory:
+      - item_name: "Hammer Heavy Duty"
+        quantity: 12
+        rate: 320
+        amount: 3840
+      - item_name: "Screwdriver Set Pro"
+        quantity: 8
+        rate: 540
+        amount: 4320
+      - item_name: "PVC Pipe 1 inch"
+        quantity: 25
+        rate: 135
+        amount: 3375
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 1043.1
+      - ledger_name: "Output SGST"
+        amount: 1043.1
+    narration: "Retail hardware supply for shop floor replenishment"
+
+  - voucher_type: "Sales"
+    date: "08-Apr-2025"
+    due_date: "23-Apr-2025"
+    invoice_no: "HW-INV-002"
+    party_ledger: "Heet Mehta"
+    client_email: "heetmehta18125@gmail.com"
+    client_phone: "+91 98980 11225"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "BOTH"
+    sales_ledger: "Sales Account"
+    inventory:
+      - item_name: "Drill Machine 850W"
+        quantity: 4
+        rate: 4850
+        amount: 19400
+      - item_name: "Angle Grinder"
+        quantity: 2
+        rate: 3750
+        amount: 7500
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 2439.0
+      - ledger_name: "Output SGST"
+        amount: 2439.0
+    narration: "Construction equipment order for site contractors"
+
+  - voucher_type: "Sales"
+    date: "12-Apr-2025"
+    due_date: "27-Apr-2025"
+    invoice_no: "HW-INV-003"
+    party_ledger: "Heet Personal"
+    client_email: "heetpersonal1812@gmail.com"
+    client_phone: "+91 99770 18120"
+    status: "Pending"
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "EMAIL"
+    sales_ledger: "Sales Account"
+    inventory:
+      - item_name: "Electrical Wire Roll"
+        quantity: 10
+        rate: 1650
+        amount: 16500
+      - item_name: "LED Flood Light"
+        quantity: 6
+        rate: 1200
+        amount: 7200
+      - item_name: "Modular Switch Board"
+        quantity: 3
+        rate: 2600
+        amount: 7800
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 4260.6
+      - ledger_name: "Output SGST"
+        amount: 4260.6
+    narration: "Electrical installation supply for commercial interior work"
+
+  - voucher_type: "Sales"
+    date: "16-Apr-2025"
+    due_date: "01-May-2025"
+    invoice_no: "HW-INV-004"
+    party_ledger: "Shrey Manufacturing"
+    client_email: "accounts@shreymanufacturing.in"
+    client_phone: "+91 97123 44556"
+    status: "Paid"
+    amount_paid: 68940
+    auto_reminder_enabled: true
+    reminder_offsets: [7, 3, 1, 0]
+    overdue_reminder_enabled: true
+    overdue_reminder_every_days: 1
+    reminder_channel: "EMAIL"
+    sales_ledger: "Sales Account"
+    inventory:
+      - item_name: "Industrial Bearing Kit"
+        quantity: 6
+        rate: 5400
+        amount: 32400
+      - item_name: "Power Tool Starter Pack"
+        quantity: 3
+        rate: 11800
+        amount: 35400
+    ledger_allocations:
+      - ledger_name: "Output CGST"
+        amount: 6102.0
+      - ledger_name: "Output SGST"
+        amount: 6102.0
+    narration: "Bulk manufacturing purchase completed through advance payment"
+

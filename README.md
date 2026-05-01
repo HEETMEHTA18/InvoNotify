@@ -371,3 +371,29 @@ Apply these before considering a separate backend service:
 
 ## 17. License
 Project developed for B2B Invoice Management. All rights reserved.
+
+## 18. Hardware Demo Data
+The `data/` folder now includes hardware-company fixtures that match the live import routes and are suitable for demos, presentations, and bulk import testing.
+
+### Included Files
+- `data/hardware_customers.yml`
+- `data/hardware_transactions.yml`
+- `data/hardware_end_to_end.yml`
+- `data/hardware_bulk_demo.yml`
+
+### Sample Customer Emails
+- `heetmehta18125@gmail.com`
+- `ommistry5559@gmail.com`
+- `heetpersonal1812@gmail.com`
+
+### What These Fixtures Demonstrate
+- Realistic hardware retail and wholesale customers.
+- Invoice imports with stock items, GST allocations, and due dates.
+- Reminder-ready transactions with email and SMS/BOTH channels.
+- End-to-end linking between customer data and invoices.
+
+### Recommended Demo Flow
+1. Import `hardware_customers.yml`.
+2. Import `hardware_bulk_demo.yml` or `hardware_end_to_end.yml`.
+3. Open the dashboard and review customer risk and overdue balances.
+4. Explain how reminder rules are derived from due dates and invoice status.
