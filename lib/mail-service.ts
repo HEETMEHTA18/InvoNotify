@@ -45,7 +45,7 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
   }
 
   const reminderChannel = params.channelOverride ?? normalizeReminderChannel(invoice.reminderChannel);
-  const useEmail = reminderChannel === "EMAIL";
+  const useEmail = reminderChannel === "EMAIL" || reminderChannel === "BOTH";
 
   if (useEmail && !invoice.clientEmail) {
     return { sent: false, invoiceId: invoice.id, reason: "Client email missing" };
