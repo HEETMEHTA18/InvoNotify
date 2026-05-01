@@ -1,5 +1,5 @@
 export const REMINDER_OFFSET_OPTIONS = [7, 3, 1, 0] as const;
-export const REMINDER_CHANNEL_OPTIONS = ["EMAIL"] as const;
+export const REMINDER_CHANNEL_OPTIONS = ["EMAIL", "SMS", "BOTH"] as const;
 const MAX_REMINDER_OFFSET_DAYS = 30;
 
 export type ReminderChannel = (typeof REMINDER_CHANNEL_OPTIONS)[number];
@@ -63,7 +63,7 @@ export function normalizeReminderChannel(value: unknown): ReminderChannel {
   const raw = String(value || "")
     .trim()
     .toUpperCase();
-  if (raw === "SMS" || raw === "BOTH") {
+  if (raw === "EMAIL" || raw === "SMS" || raw === "BOTH") {
     return raw;
   }
   return "EMAIL";
