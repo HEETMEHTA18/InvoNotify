@@ -162,11 +162,10 @@ async function runAutoReminderSweep(
   };
 }
 
-export async function GET(req: NextRequest) {
+async function handleAutoReminderRequest(req: NextRequest, manualMode: boolean) {
   try {
     const cronAllowed = isCronAuthorized(req);
     let manualUserId: string | undefined;
-    const manualMode = req.nextUrl.searchParams.get("manual") === "true";
 
     if (!cronAllowed) {
       const session = await auth();
@@ -195,14 +194,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export async function GET(req: NextRequest) {
+  const manualMode = req.nextUrl.searchParams.get("manual") === "true";
+  return handleAutoReminderRequest(req, manualMode);
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({ manual: false }));
-
   const manual = Boolean(body?.manual);
-  const url = new URL(req.url);
-  if (manual) {
-    url.searchParams.set("manual", "true");
-  }
-
-  return GET(new NextRequest(url, req));
+  return handleAutoReminderRequest(req, manual);
 }
