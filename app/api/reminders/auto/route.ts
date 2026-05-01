@@ -49,7 +49,10 @@ async function runAutoReminderSweep(
     where: {
       autoReminderEnabled: true,
       dueDate: { not: null },
-      status: { in: ["Pending", "Draft"] },
+      OR: [
+        { status: { in: ["Pending", "Draft"] } },
+        { status: "Overdue" },
+      ],
       AND: [
         ...(limitUserId
           ? [
