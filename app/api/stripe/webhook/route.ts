@@ -156,7 +156,10 @@ export async function POST(req: NextRequest) {
         break;
       }
       case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object;
+        const paymentIntent = event.data.object as StripePaymentSource & {
+          amount_received?: number;
+          amount?: number;
+        };
         const invoiceId = Number(paymentIntent.metadata?.invoiceId);
 
         if (!invoiceId || Number.isNaN(invoiceId)) {
