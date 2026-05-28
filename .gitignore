@@ -36,6 +36,7 @@ tsc-errors.txt
 logs/*.log
 playwright-report/
 test-results/
+.jetro/
 
 # env files (can opt-in for committing if needed)
 .env*
