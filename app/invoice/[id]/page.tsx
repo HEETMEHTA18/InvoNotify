@@ -61,6 +61,7 @@ function InvoiceDetailContent() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [payLoading, setPayLoading] = useState(false);
     const invoiceRef = useRef<HTMLDivElement>(null);
     const [settings, setSettings] = useState<CompanySettings | null>(null);
     const [paymentQrDataUrl, setPaymentQrDataUrl] = useState<string | null>(null);
@@ -157,6 +158,30 @@ function InvoiceDetailContent() {
         }
     }
 
+    async function handlePay() {
+        if (!invoice) return;
+        setPayLoading(true);
+        try {
+            const res = await fetch('/api/stripe/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invoiceId: invoice.id }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || 'Failed to create checkout session');
+            if (data?.url) {
+                window.location.href = data.url;
+            } else {
+                throw new Error('No checkout url returned');
+            }
+        } catch (err) {
+            console.error(err);
+            alert(err instanceof Error ? err.message : 'Payment failed');
+        } finally {
+            setPayLoading(false);
+        }
+    }
+
     const handleDownload = useCallback(async () => {
         if (!invoiceRef.current) return;
         try {
@@ -239,6 +264,9 @@ function InvoiceDetailContent() {
                             </Button>
                             <Button variant="outline" onClick={() => window.print()}>
                                 <Printer className="w-4 h-4 mr-2" /> Print
+                            </Button>
+                            <Button onClick={handlePay} disabled={payLoading || (invoice.status?.toLowerCase() === 'paid') || Number(invoice.total || 0) <= 0} className="bg-emerald-600 text-white">
+                                {payLoading ? 'Processing...' : 'Pay'}
                             </Button>
                             <Button onClick={handleDownload} className="bg-[#596778] text-white">
                                 <Download className="w-4 h-4 mr-2" /> Download PDF

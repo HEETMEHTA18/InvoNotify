@@ -14,6 +14,7 @@ export interface InvoiceTemplateData {
   isOverdue?: boolean;
   paymentQrDataUrl?: string | null;
   paymentQrAmount?: string;
+  checkoutUrl?: string | null;
 }
 
 export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
@@ -31,6 +32,7 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
     isOverdue,
     paymentQrDataUrl,
     paymentQrAmount,
+    checkoutUrl,
   } = data;
 
   const isAlert = Boolean(isOverdue);
@@ -285,6 +287,10 @@ export function getInvoiceReminderTemplate(data: InvoiceTemplateData) {
            <div class="qr-label">Scan to pay ${currency} ${paymentQrAmount || amountDue}</div>
          </div>`
       : ""}
+    ${checkoutUrl ? `
+    <div class="section" style="text-align:center; padding-bottom:32px;">
+      <a href="${checkoutUrl}" style="display:inline-block;background:#10b981;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:700;">Pay Now — ${currency} ${paymentQrAmount || amountDue}</a>
+    </div>` : ""}
     </div>
 
     <!-- Support Footer -->

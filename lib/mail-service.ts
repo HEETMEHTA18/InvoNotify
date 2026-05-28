@@ -6,6 +6,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import QRCode from "qrcode";
 import { buildPaymentPayload, isValidPaymentPayload } from "@/lib/payment-qr";
 import { getFallbackQrPayloadFromCodebase } from "@/lib/bank-qr-fallback";
+import { getStripeSecretKey } from "@/lib/stripe";
 import {
   ReminderChannel,
   ReminderType,
@@ -104,7 +105,7 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
     }
   }
 
-  const body = getInvoiceReminderTemplate({
+  let body = getInvoiceReminderTemplate({
     clientName: invoice.clientName || "Valued Customer",
     invoiceNumber: invoice.invoiceNumber,
     amountDue: Number(invoice.balance).toLocaleString(),
@@ -118,6 +119,7 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
     isOverdue: params.reminderType === "OVERDUE_REPEAT",
     paymentQrDataUrl,
     paymentQrAmount: normalizedAmount,
+    checkoutUrl: null,
   });
 
   const attachmentName = `invoice-${invoice.invoiceNumber || invoice.id}.pdf`;
@@ -129,6 +131,68 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
     }
 
     try {
+        // Try to create a Stripe Checkout session link to include in the email
+        try {
+          const stripeSecret = getStripeSecretKey();
+          if (stripeSecret) {
+            const amountDueInt = Math.round(Number(invoice.balance) * 100);
+            const currency = (invoice.currency || "INR").toLowerCase();
+            const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const form = new URLSearchParams();
+            form.set("mode", "payment");
+            form.set("success_url", `${appUrl}/invoice/${invoice.id}?payment=success`);
+            form.set("cancel_url", `${appUrl}/invoice/${invoice.id}?payment=cancel`);
+            if (invoice.clientEmail) form.set("customer_email", invoice.clientEmail);
+            form.set("automatic_payment_methods[enabled]", "true");
+            form.set("line_items[0][quantity]", "1");
+            form.set("line_items[0][price_data][currency]", currency);
+            form.set("line_items[0][price_data][unit_amount]", String(amountDueInt));
+            form.set("line_items[0][price_data][product_data][name]", `Invoice ${invoice.invoiceNumber || `#${invoice.id}`}`);
+            form.set("line_items[0][price_data][product_data][description]", invoice.clientName ? `Payment for ${invoice.clientName}` : "Invoice payment");
+            form.set("metadata[invoiceId]", String(invoice.id));
+            form.set("metadata[ownerUserId]", String(invoice.ownerUserId));
+            form.set("metadata[invoiceNumber]", invoice.invoiceNumber || "");
+
+            const resp = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${stripeSecret}`,
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: form.toString(),
+            });
+
+            if (resp.ok) {
+              const json = await resp.json();
+              // inject checkout URL into body template
+              const checkoutUrl = json.url as string | undefined;
+              if (checkoutUrl) {
+                // regenerate body with checkout url
+                const newBody = getInvoiceReminderTemplate({
+                  clientName: invoice.clientName || "Valued Customer",
+                  invoiceNumber: invoice.invoiceNumber,
+                  amountDue: Number(invoice.balance).toLocaleString(),
+                  dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "N/A",
+                  senderName: invoice.senderName || "Invoice Management",
+                  senderAddress: invoice.senderAddress || "",
+                  logoUrl: companySettings?.logo || null,
+                  currency: invoice.currency,
+                  reminderTitle: tone.title,
+                  reminderBadge: tone.badge,
+                  isOverdue: params.reminderType === "OVERDUE_REPEAT",
+                  paymentQrDataUrl,
+                  paymentQrAmount: normalizedAmount,
+                  checkoutUrl,
+                });
+                // replace body used for sending
+                body = newBody; // eslint-disable-line no-param-reassign
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("Failed to create checkout session for email:", err);
+          // continue sending email without checkout link
+        }
       await sendInvoiceReminder({
         userId: actingUserId,
         to: invoice.clientEmail,
