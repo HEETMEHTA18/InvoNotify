@@ -126,7 +126,7 @@ async function recordStripePayment(session: StripePaymentSource) {
 }
 
 export async function POST(req: NextRequest) {
-  const signature = headers().get("stripe-signature");
+  const signature = (await headers()).get("stripe-signature");
   const webhookSecret = getStripeWebhookSecret();
 
   if (!signature || !webhookSecret) {
