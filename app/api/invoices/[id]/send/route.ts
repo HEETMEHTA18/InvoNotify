@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { sendInvoiceReminder } from "@/lib/gmail";
+import { createStripeCheckoutUrl } from "@/lib/stripe";
 
 // POST: Send invoice PDF to client email
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +39,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const pdfBuffer = new Uint8Array(Buffer.from(pdfBase64, "base64"));
 
     const subject = customSubject || `Invoice ${invoice.invoiceNumber} from ${invoice.senderName || "Invoice Management"}`;
-    const body = htmlContent || `
+    const checkoutUrl = await createStripeCheckoutUrl({
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      amountDue: Number(invoice.balance ?? invoice.total ?? 0),
+      currency: invoice.currency,
+      clientEmail: invoice.clientEmail,
+      clientName: invoice.clientName,
+      ownerUserId: session.user.id,
+    });
+
+    const checkoutCta = checkoutUrl
+      ? `
+        <div style="padding: 0 32px 24px 32px; text-align: center;">
+          <a href="${checkoutUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700;">Pay Now</a>
+        </div>
+      `
+      : "";
+
+    const baseBody = htmlContent || `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
           <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px; text-align: center; border-radius: 8px 8px 0 0;">
             <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Invoice</h1>
@@ -74,6 +93,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           </div>
         </div>
       `;
+
+    const body = `${checkoutCta}${baseBody}`;
 
     await sendInvoiceReminder({
       userId: session.user.id,
