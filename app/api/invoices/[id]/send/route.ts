@@ -49,14 +49,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ownerUserId: session.user.id,
     });
 
-    const checkoutCta = checkoutUrl
-      ? `
-        <div style="padding: 0 32px 24px 32px; text-align: center;">
-          <a href="${checkoutUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700;">Pay Now</a>
-        </div>
-      `
-      : "";
-
     const baseBody = htmlContent || `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
           <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px; text-align: center; border-radius: 8px 8px 0 0;">
@@ -88,13 +80,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 </tr>
               </table>
             </div>
+            ${checkoutUrl ? `
+            <div style="text-align:center; margin: 24px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                <tr>
+                  <td align="center" bgcolor="#10b981" style="border-radius: 8px;">
+                    <a href="${checkoutUrl}" style="display:inline-block;padding:12px 22px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Pay Now</a>
+                  </td>
+                </tr>
+              </table>
+            </div>
+            ` : ""}
             <p style="font-size: 14px; color: #4a5568; line-height: 1.6;">Thank you for your business!</p>
             <p style="font-size: 14px; color: #4a5568; margin-bottom: 0;">Best regards,<br/><strong>${invoice.senderName || "Invoice Management"}</strong></p>
           </div>
         </div>
       `;
 
-    const body = `${checkoutCta}${baseBody}`;
+    const body = baseBody;
 
     await sendInvoiceReminder({
       userId: session.user.id,

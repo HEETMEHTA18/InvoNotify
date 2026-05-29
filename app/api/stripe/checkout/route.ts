@@ -82,7 +82,6 @@ export async function POST(req: NextRequest) {
       success_url: `${appUrl}/invoice/${invoice.id}?payment=success`,
       cancel_url: `${appUrl}/invoice/${invoice.id}?payment=cancel`,
       customer_email: invoice.clientEmail || undefined,
-      "automatic_payment_methods[enabled]": "true",
       "line_items[0][quantity]": 1,
       "line_items[0][price_data][currency]": currency,
       "line_items[0][price_data][unit_amount]": Math.round(amountDue * 100),

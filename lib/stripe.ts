@@ -29,7 +29,6 @@ export async function createStripeCheckoutUrl(input: StripeCheckoutSessionInput)
   form.set("mode", "payment");
   form.set("success_url", `${appUrl}/invoice/${input.invoiceId}?payment=success`);
   form.set("cancel_url", `${appUrl}/invoice/${input.invoiceId}?payment=cancel`);
-  form.set("automatic_payment_methods[enabled]", "true");
   form.set("line_items[0][quantity]", "1");
   form.set("line_items[0][price_data][currency]", currency);
   form.set("line_items[0][price_data][unit_amount]", String(amountDueInt));
