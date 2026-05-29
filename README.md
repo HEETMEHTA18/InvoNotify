@@ -211,8 +211,8 @@ Documentation/      Additional project docs (SRS, etc.)
 
 ## 6. Prerequisites
 
-- Node.js 18.17+
-- npm or pnpm
+- Node.js 20.9+
+- pnpm 9.x
 - PostgreSQL database
 - Optional provider accounts: Google, Twilio, Telegram, VAPI
 
