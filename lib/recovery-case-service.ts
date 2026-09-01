@@ -4,7 +4,7 @@ import { buildRecoveryContext } from "@/lib/ai/context";
 import { decideRecoveryAction } from "@/lib/ai/agent/decision-agent";
 import type { AgentDecision, AllowedAction } from "@/lib/ai/agent/types";
 import { evaluatePolicy } from "@/lib/ai/policy/engine";
-import { getMerchantPolicy, isWithinBusinessHours } from "@/lib/ai/policy/merchant-policy";
+import { applyContactWindowGuard, getMerchantPolicy } from "@/lib/ai/policy/merchant-policy";
 import { getContactHistory, isTerminalRecoveryCaseStatus } from "@/lib/ai/orchestrator";
 import { getStrategyStats } from "@/lib/ai/learning";
 
@@ -38,6 +38,16 @@ export async function recoveryProfile(invoiceId: number) {
         voiceEligible: false,
         optedOut: context.customer.communicationOptOut,
       },
+      contactWindow: context.customer.contactWindow
+        ? {
+            timezone: context.customer.contactWindow.timezone,
+            businessHours: {
+              start: context.customer.contactWindow.start,
+              end: context.customer.contactWindow.end,
+            },
+            businessDays: context.customer.contactWindow.businessDays,
+          }
+        : null,
     },
     transaction: {
       invoiceId: context.invoice.id,
@@ -137,8 +147,6 @@ export async function decideRecoveryCase(args: {
     priorActions: priorRows.map((row) => row.actionType),
     strategyStats,
   });
-  const businessHoursBlocked = ["SEND_REMINDER", "CREATE_PAYMENT_LINK", "RESEND_PAYMENT_LINK"].includes(selected.recommendedAction)
-    && !isWithinBusinessHours(new Date(), merchantPolicy.businessHours);
   const evaluatedVerdict = evaluatePolicy({
     context,
     decision: selected,
@@ -149,21 +157,33 @@ export async function decideRecoveryCase(args: {
     history,
     limits: merchantPolicy.limits,
   });
-  const verdict = businessHoursBlocked
-    ? { decision: "BLOCK" as const, approvalRequired: false, reasons: ["Contact action is outside configured merchant business hours"] }
-    : evaluatedVerdict;
+  const decisionTime = new Date();
+  const verdict = applyContactWindowGuard({
+    verdict: evaluatedVerdict,
+    action: selected.recommendedAction,
+    now: decisionTime,
+    merchantBusinessHours: merchantPolicy.businessHours,
+    customerContactWindow: context.customer.contactWindow,
+  });
 
   const alternativeActions: AllowedAction[] = Array.from(
     new Set<AllowedAction>([selected.recommendedAction, "SEND_REMINDER", "CREATE_PAYMENT_LINK", "ESCALATE_TO_HUMAN", "STOP"]),
   ).slice(0, 5);
   const candidates = alternativeActions.map((action, index) => {
     const candidate = candidateDecision(selected, action);
-    const candidateVerdict = evaluatePolicy({
+    const candidateEvaluatedVerdict = evaluatePolicy({
       context,
       decision: candidate,
       flags: { disputed: context.invoice.status === "Disputed", optedOut: context.customer.communicationOptOut },
       history,
       limits: merchantPolicy.limits,
+    });
+    const candidateVerdict = applyContactWindowGuard({
+      verdict: candidateEvaluatedVerdict,
+      action,
+      now: decisionTime,
+      merchantBusinessHours: merchantPolicy.businessHours,
+      customerContactWindow: context.customer.contactWindow,
     });
     const probability = action === selected.recommendedAction ? context.risk.paymentProbability : Math.max(0.01, context.risk.paymentProbability * (action === "STOP" ? 0 : 0.75));
     return { action, candidate, candidateVerdict, probability, rank: index + 1 };

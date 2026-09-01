@@ -1,7 +1,15 @@
 import { prisma } from "@/lib/db";
-import { POLICY_LIMITS, type PolicyLimits } from "./engine";
+import { CONTACT_ACTIONS, type PolicyLimits, type PolicyVerdict, POLICY_LIMITS } from "./engine";
 
-type BusinessHours = { start: number; end: number; timezone: string };
+export type BusinessHours = { start: number; end: number; timezone: string };
+
+/** A customer's consented local contact window. Weekday values use 0 = Sunday. */
+export type CustomerContactWindow = {
+  timezone: string;
+  start: number;
+  end: number;
+  businessDays: number[];
+};
 
 export type MerchantPolicy = {
   limits: Partial<PolicyLimits>;
@@ -52,4 +60,59 @@ export function isWithinBusinessHours(now: Date, hours?: BusinessHours) {
   } catch {
     return false;
   }
+}
+
+function weekdayAt(now: Date, timezone: string): number | null {
+  try {
+    const weekday = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(now);
+    const index = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
+    return index >= 0 ? index : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns false for invalid configuration as well as for an out-of-window
+ * contact. That conservative default prevents a malformed timezone from
+ * becoming an accidental permission to message a customer.
+ */
+export function isWithinCustomerContactWindow(now: Date, window?: CustomerContactWindow) {
+  if (!window) return true;
+  const { start, end, timezone, businessDays } = window;
+  if (
+    !Number.isInteger(start) || start < 0 || start > 23 ||
+    !Number.isInteger(end) || end < 1 || end > 24 || end <= start ||
+    !timezone.trim() ||
+    !Array.isArray(businessDays) || businessDays.length === 0 ||
+    businessDays.some((day) => !Number.isInteger(day) || day < 0 || day > 6)
+  ) {
+    return false;
+  }
+  const day = weekdayAt(now, timezone);
+  if (day === null || !businessDays.includes(day)) return false;
+  try {
+    const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: timezone, hour: "2-digit", hourCycle: "h23" }).format(now));
+    return Number.isInteger(hour) && hour >= start && hour < end;
+  } catch {
+    return false;
+  }
+}
+
+/** Applies contact-time restrictions consistently to every decision path. */
+export function applyContactWindowGuard(args: {
+  verdict: PolicyVerdict;
+  action: string;
+  now: Date;
+  merchantBusinessHours?: BusinessHours;
+  customerContactWindow?: CustomerContactWindow;
+}): PolicyVerdict {
+  if (!CONTACT_ACTIONS.includes(args.action as (typeof CONTACT_ACTIONS)[number])) return args.verdict;
+  if (!isWithinBusinessHours(args.now, args.merchantBusinessHours)) {
+    return { decision: "BLOCK", approvalRequired: false, reasons: ["Contact action is outside configured merchant business hours"] };
+  }
+  if (!isWithinCustomerContactWindow(args.now, args.customerContactWindow)) {
+    return { decision: "BLOCK", approvalRequired: false, reasons: ["Contact action is outside the customer's configured local contact window"] };
+  }
+  return args.verdict;
 }

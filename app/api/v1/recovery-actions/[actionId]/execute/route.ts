@@ -4,7 +4,7 @@ import { toInputJson } from "@/lib/json";
 import { buildRecoveryContext } from "@/lib/ai/context";
 import { getContactHistory, isTerminalRecoveryCaseStatus } from "@/lib/ai/orchestrator";
 import { evaluatePolicy } from "@/lib/ai/policy/engine";
-import { getMerchantPolicy, isWithinBusinessHours } from "@/lib/ai/policy/merchant-policy";
+import { applyContactWindowGuard, getMerchantPolicy } from "@/lib/ai/policy/merchant-policy";
 import { rateLimitResponse } from "@/lib/ai/rate-limit";
 import { badRequest, notFound, parseId, recoveryCaseScope, requireUser } from "@/lib/security/authz";
 import { crossOriginBlocked, isCrossOriginStateChange, readJson } from "@/lib/security/http";
@@ -67,10 +67,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       history,
       limits: merchantPolicy.limits,
     });
-    const verdict = ["SEND_REMINDER", "CREATE_PAYMENT_LINK", "RESEND_PAYMENT_LINK"].includes(decision.recommendedAction)
-      && !isWithinBusinessHours(new Date(), merchantPolicy.businessHours)
-      ? { decision: "BLOCK" as const, approvalRequired: false, reasons: ["Contact action is outside configured merchant business hours"] }
-      : evaluatedVerdict;
+    const verdict = applyContactWindowGuard({
+      verdict: evaluatedVerdict,
+      action: decision.recommendedAction,
+      now: new Date(),
+      merchantBusinessHours: merchantPolicy.businessHours,
+      customerContactWindow: context.customer.contactWindow,
+    });
 
     const outcome = verdict.decision === "BLOCK"
       ? { status: "BLOCKED", caseStatus: "BLOCKED", eventType: "RECOVERY_ACTION_BLOCKED" }

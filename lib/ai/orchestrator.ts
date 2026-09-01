@@ -9,7 +9,7 @@ import { createLogger } from "./logger";
 import { getStrategyStats } from "./learning";
 import { CHASEABLE_INVOICE_STATUSES } from "@/lib/customer-credit";
 import { calculateRecoveryCredit } from "./revenue-ledger";
-import { getMerchantPolicy, isWithinBusinessHours } from "./policy/merchant-policy";
+import { applyContactWindowGuard, getMerchantPolicy } from "./policy/merchant-policy";
 
 const log = createLogger("ai:orchestrator");
 
@@ -300,11 +300,13 @@ async function processInvoice(
     history,
     limits: merchantPolicy.limits,
   });
-  const businessHoursBlocked = CONTACT_ACTIONS.includes(decision.recommendedAction)
-    && !isWithinBusinessHours(opts.now, merchantPolicy.businessHours);
-  const verdict = businessHoursBlocked
-    ? { decision: "BLOCK" as const, approvalRequired: false, reasons: ["Contact action is outside configured merchant business hours"] }
-    : evaluatedVerdict;
+  const verdict = applyContactWindowGuard({
+    verdict: evaluatedVerdict,
+    action: decision.recommendedAction,
+    now: opts.now,
+    merchantBusinessHours: merchantPolicy.businessHours,
+    customerContactWindow: context.customer.contactWindow,
+  });
 
   let actionStatus: string | null = null;
   let payload: Record<string, unknown> | null = null;

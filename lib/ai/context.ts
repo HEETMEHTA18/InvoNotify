@@ -4,6 +4,7 @@ import { CHASEABLE_INVOICE_STATUSES } from "@/lib/customer-credit";
 import type { RawFeatures, RiskScore } from "./ml/types";
 import { scoreRisk } from "./ml/risk-model";
 import { extractCustomerFeatures } from "./ml/features";
+import type { CustomerContactWindow } from "./policy/merchant-policy";
 
 type InvoiceWithRelations = Prisma.InvoiceGetPayload<{
   include: {
@@ -44,6 +45,8 @@ export type RecoveryContext = {
     paymentSuccessRate: number;
     customerAgeDays: number;
     historyCount: number;
+    /** Present only for a linked customer; governs outbound contact timing. */
+    contactWindow?: CustomerContactWindow;
   };
   risk: RiskScore;
   features: RawFeatures;
@@ -126,6 +129,14 @@ export async function buildRecoveryContext(invoiceId: number): Promise<RecoveryC
       isVipExempt: invoice.customerRel?.isVipExempt ?? false,
       communicationOptOut: invoice.customerRel?.communicationOptOut ?? false,
       cibilScore: invoice.customerRel?.cibilScore ?? 650,
+      contactWindow: invoice.customerRel
+        ? {
+            timezone: invoice.customerRel.timezone,
+            start: invoice.customerRel.businessHoursStart,
+            end: invoice.customerRel.businessHoursEnd,
+            businessDays: invoice.customerRel.businessDays,
+          }
+        : undefined,
       ...history,
     },
     risk,

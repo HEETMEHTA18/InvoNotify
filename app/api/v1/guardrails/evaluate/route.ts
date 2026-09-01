@@ -4,7 +4,7 @@ import { toInputJson } from "@/lib/json";
 import { buildRecoveryContext } from "@/lib/ai/context";
 import { getContactHistory } from "@/lib/ai/orchestrator";
 import { evaluatePolicy } from "@/lib/ai/policy/engine";
-import { getMerchantPolicy, isWithinBusinessHours } from "@/lib/ai/policy/merchant-policy";
+import { applyContactWindowGuard, getMerchantPolicy } from "@/lib/ai/policy/merchant-policy";
 import { requireRecoveryRole } from "@/lib/security/rbac";
 import { badRequest, notFound, recoveryCaseScope, requireUser } from "@/lib/security/authz";
 import { crossOriginBlocked, isCrossOriginStateChange, readJson } from "@/lib/security/http";
@@ -25,9 +25,13 @@ export async function POST(request: NextRequest) {
     const history = await getContactHistory(recoveryCase.id, new Date());
     const policy = await getMerchantPolicy(who.userId);
     const evaluated = evaluatePolicy({ context, decision: { recommendedAction: input.actionType, channel: input.channel, urgency: "MEDIUM", reason: "Explicit guardrail evaluation", confidence: input.confidence, modelUsed: "rules" }, flags: { disputed: context.invoice.status === "Disputed", optedOut: context.customer.communicationOptOut }, history, limits: policy.limits });
-    const verdict = ["SEND_REMINDER", "CREATE_PAYMENT_LINK", "RESEND_PAYMENT_LINK"].includes(input.actionType) && !isWithinBusinessHours(new Date(), policy.businessHours)
-      ? { decision: "BLOCK" as const, approvalRequired: false, reasons: ["Contact action is outside configured merchant business hours"] }
-      : evaluated;
+    const verdict = applyContactWindowGuard({
+      verdict: evaluated,
+      action: input.actionType,
+      now: new Date(),
+      merchantBusinessHours: policy.businessHours,
+      customerContactWindow: context.customer.contactWindow,
+    });
     const evaluation = await prisma.guardrailEvaluation.create({ data: { recoveryCaseId: recoveryCase.id, actionType: input.actionType, channel: input.channel, result: verdict.decision, reasons: toInputJson(verdict.reasons), riskScore: context.risk.riskScore, amountAtRisk: context.invoice.balance, attemptCount: history.contactAttempts, contactCount: history.contactAttempts, optOut: context.customer.communicationOptOut } });
     await prisma.auditLog.create({ data: { recoveryCaseId: recoveryCase.id, eventType: "GUARDRAIL_EVALUATED", actor: who.userId, metadata: toInputJson({ evaluationId: evaluation.id, actionType: input.actionType, result: verdict.decision }) } });
     return NextResponse.json({ verdict, evaluation });

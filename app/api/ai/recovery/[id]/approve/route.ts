@@ -5,7 +5,7 @@ import { buildRecoveryContext } from "@/lib/ai/context";
 import { getContactHistory, isTerminalRecoveryCaseStatus } from "@/lib/ai/orchestrator";
 import { executeAction } from "@/lib/ai/actions/engine";
 import { evaluatePolicy } from "@/lib/ai/policy/engine";
-import { getMerchantPolicy, isWithinBusinessHours } from "@/lib/ai/policy/merchant-policy";
+import { applyContactWindowGuard, getMerchantPolicy } from "@/lib/ai/policy/merchant-policy";
 import { rateLimitResponse, getRateLimitHeaders } from "@/lib/ai/rate-limit";
 import { createLogger } from "@/lib/ai/logger";
 import { requireRecoveryRole } from "@/lib/security/rbac";
@@ -111,10 +111,13 @@ export async function POST(
       history,
       limits: merchantPolicy.limits,
     });
-    const verdict = ["SEND_REMINDER", "CREATE_PAYMENT_LINK", "RESEND_PAYMENT_LINK"].includes(pendingAction.actionType)
-      && !isWithinBusinessHours(new Date(), merchantPolicy.businessHours)
-      ? { decision: "BLOCK" as const, approvalRequired: false, reasons: ["Contact action is outside configured merchant business hours"] }
-      : evaluatedVerdict;
+    const verdict = applyContactWindowGuard({
+      verdict: evaluatedVerdict,
+      action: pendingAction.actionType,
+      now: new Date(),
+      merchantBusinessHours: merchantPolicy.businessHours,
+      customerContactWindow: context.customer.contactWindow,
+    });
 
     if (verdict.decision === "BLOCK") {
       await prisma.$transaction([

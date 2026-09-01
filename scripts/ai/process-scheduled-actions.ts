@@ -10,10 +10,9 @@ import { toInputJson } from "@/lib/json";
 import { buildRecoveryContext } from "@/lib/ai/context";
 import { getContactHistory, isTerminalRecoveryCaseStatus } from "@/lib/ai/orchestrator";
 import { evaluatePolicy } from "@/lib/ai/policy/engine";
-import { getMerchantPolicy, isWithinBusinessHours } from "@/lib/ai/policy/merchant-policy";
+import { applyContactWindowGuard, getMerchantPolicy } from "@/lib/ai/policy/merchant-policy";
 
 const allowedActions = new Set(["SEND_REMINDER", "CREATE_PAYMENT_LINK", "RESEND_PAYMENT_LINK", "SCHEDULE_FOLLOWUP", "ESCALATE_TO_HUMAN", "STOP"]);
-const contactActions = new Set(["SEND_REMINDER", "CREATE_PAYMENT_LINK", "RESEND_PAYMENT_LINK"]);
 
 async function main() {
   const now = new Date();
@@ -49,9 +48,13 @@ async function main() {
       history,
       limits: merchantPolicy.limits,
     });
-    const verdict = contactActions.has(recommendedAction) && !isWithinBusinessHours(now, merchantPolicy.businessHours)
-      ? { decision: "BLOCK" as const, approvalRequired: false, reasons: ["Contact action is outside configured merchant business hours"] }
-      : evaluated;
+    const verdict = applyContactWindowGuard({
+      verdict: evaluated,
+      action: recommendedAction,
+      now,
+      merchantBusinessHours: merchantPolicy.businessHours,
+      customerContactWindow: context.customer.contactWindow,
+    });
     const isBlocked = verdict.decision === "BLOCK";
     const caseStatus = isBlocked ? "BLOCKED" : recommendedAction === "STOP" ? "STOPPED" : recommendedAction === "ESCALATE_TO_HUMAN" ? "ESCALATED" : "IN_RECOVERY";
     await prisma.$transaction(async (tx) => {
