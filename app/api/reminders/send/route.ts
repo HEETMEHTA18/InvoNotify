@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { sendInvoiceReminderById } from "@/lib/mail-service";
 
 export async function POST(req: NextRequest) {
@@ -19,6 +20,20 @@ export async function POST(req: NextRequest) {
 
     if (!Number.isInteger(invoiceId)) {
       return NextResponse.json({ error: "Invoice ID is required" }, { status: 400 });
+    }
+
+    // The mail service intentionally also serves cron jobs, so enforce tenant
+    // ownership at this user-controlled entry point before it can send a
+    // reminder for an arbitrary numeric invoice ID.
+    const invoice = await prisma.invoice.findFirst({
+      where: {
+        id: invoiceId,
+        OR: [{ ownerUserId: session.user.id }, { userId: session.user.id }],
+      },
+      select: { id: true },
+    });
+    if (!invoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
     const result = await sendInvoiceReminderById({

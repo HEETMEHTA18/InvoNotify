@@ -5,6 +5,7 @@ import * as yaml from "js-yaml";
 import { XMLParser } from "fast-xml-parser";
 
 import { auth } from "@/lib/auth";
+import { createPublicInvoiceToken } from "@/lib/security/public-invoice";
 
 type JsonObject = Record<string, unknown>;
 
@@ -344,6 +345,7 @@ export async function POST(req: Request) {
                         invoiceNumber: invoiceNumber,
                         ownerUserId: session?.user?.id, // CRITICAL FIX: Link to user
                         userId: session?.user?.id,      // Linking with both fields just in case
+                        publicToken: createPublicInvoiceToken(),
                         senderName: settings?.name || "Shiv Hardware",
                         senderEmail: settings?.email || "shivhardware@gmail.com",
                         senderAddress: settings?.address || "Shiv Hardware, Nadiad",

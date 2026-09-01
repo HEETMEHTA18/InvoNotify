@@ -27,7 +27,8 @@ type PublicInvoice = {
 };
 
 export default function InvoicePayPage() {
-  const { id } = useParams<{ id: string }>();
+  // The route segment is an opaque customer capability token, not Invoice.id.
+  const { id: publicToken } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const paymentState = searchParams.get("payment");
 
@@ -40,7 +41,7 @@ export default function InvoicePayPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/public/invoices/${id}`);
+        const res = await fetch(`/api/public/invoices/${encodeURIComponent(publicToken)}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Invoice not found");
@@ -55,13 +56,13 @@ export default function InvoicePayPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [publicToken]);
 
   const handlePayNow = async () => {
     setPaying(true);
     setError(null);
     try {
-      const res = await fetch(`/api/public/invoices/${id}/pay`, { method: "POST" });
+      const res = await fetch(`/api/public/invoices/${encodeURIComponent(publicToken)}/pay`, { method: "POST" });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.paymentUrl) {
         throw new Error(body.error || "Could not start payment");

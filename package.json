@@ -30,6 +30,7 @@
     "ai:verify": "DISABLE_LLM_AGENT=true node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/verify-local.ts",
     "ai:batch": "DISABLE_LLM_AGENT=true node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/run-hackathon-batch.ts",
     "ai:scheduled-actions": "node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/process-scheduled-actions.ts",
+    "security:backfill-public-tokens": "node --import tsx scripts/security/backfill-public-invoice-tokens.ts",
     "ai:verify:batch": "node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/verify-hackathon-batch.ts",
     "ai:demo-learning": "npx tsx scripts/ai/demo-learning-loop.ts",
     "test:e2e:recovery": "playwright test tests/e2e/recovery.spec.ts",

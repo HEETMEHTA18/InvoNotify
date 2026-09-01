@@ -3,6 +3,7 @@ import { prisma, Prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { normalizeReminderSettings } from "@/lib/reminders";
 import { calculateCibilScoreFromInvoices, normalizeCustomerKey } from "@/lib/customer-credit";
+import { createPublicInvoiceToken } from "@/lib/security/public-invoice";
 
 function parsePositiveInt(value: string | null, fallback: number) {
   if (!value) return fallback;
@@ -292,6 +293,7 @@ export async function POST(req: NextRequest) {
       total,
       amountPaid: 0,
       balance: total,
+      publicToken: createPublicInvoiceToken(),
       // Legacy
       customer: clientName,
       amount: total,

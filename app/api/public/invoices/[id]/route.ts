@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { parsePublicInvoiceToken } from "@/lib/security/public-invoice";
 
 export const runtime = "nodejs";
 
@@ -12,14 +13,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const invoiceId = Number(id);
-  if (!Number.isInteger(invoiceId) || invoiceId <= 0) {
-    return NextResponse.json({ error: "Invalid invoice id" }, { status: 400 });
+  const publicToken = parsePublicInvoiceToken(id);
+  if (!publicToken) {
+    // Return a generic 404 so callers cannot distinguish malformed from
+    // absent capabilities or use this endpoint to enumerate invoices.
+    return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
   try {
     const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+      where: { publicToken },
       select: {
         invoiceNumber: true,
         clientName: true,
@@ -53,7 +56,7 @@ export async function GET(
     }
 
     return NextResponse.json({
-      invoiceNumber: invoice.invoiceNumber || `#${invoiceId}`,
+      invoiceNumber: invoice.invoiceNumber || "Invoice",
       customerName: invoice.clientName,
       merchantName,
       total: Number(invoice.total),

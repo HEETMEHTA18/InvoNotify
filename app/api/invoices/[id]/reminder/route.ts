@@ -19,14 +19,18 @@ export async function POST(
       return NextResponse.json({ error: "Invalid invoice id" }, { status: 400 });
     }
 
-    // Verify ownership
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      select: { ownerUserId: true }
+    // Never authorize a legacy row merely because ownerUserId is null. Both
+    // tenancy columns are supported during migration, and at least one must
+    // match the authenticated merchant.
+    const invoice = await prisma.invoice.findFirst({
+      where: {
+        id: invoiceId,
+        OR: [{ ownerUserId: session.user.id }, { userId: session.user.id }],
+      },
+      select: { id: true },
     });
-
-    if (!invoice || (invoice.ownerUserId && invoice.ownerUserId !== session.user.id)) {
-      return NextResponse.json({ error: "Unauthorized or invoice not found" }, { status: 404 });
+    if (!invoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
     const result = await sendInvoiceReminderById({

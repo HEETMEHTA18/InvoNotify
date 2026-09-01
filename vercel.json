@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npx prisma db push --accept-data-loss && HACKATHON_DEMO_SEED=true pnpm ai:seed && npx prisma generate && npx next build",
+  "buildCommand": "npx prisma db push --accept-data-loss && pnpm security:backfill-public-tokens && HACKATHON_DEMO_SEED=true pnpm ai:seed && npx prisma generate && npx next build",
   "outputDirectory": ".next",
   "installCommand": "pnpm install --frozen-lockfile",
   "regions": ["sin1"],

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { createPaymentLink } from "@/lib/razorpay";
 import { rateLimitResponse, getRateLimitHeaders } from "@/lib/ai/rate-limit";
 import { createLogger } from "@/lib/ai/logger";
+import { parsePublicInvoiceToken } from "@/lib/security/public-invoice";
 
 export const runtime = "nodejs";
 
@@ -40,16 +41,17 @@ export async function POST(
   }
 
   const { id } = await params;
-  const invoiceId = Number(id);
-  if (!Number.isInteger(invoiceId) || invoiceId <= 0) {
-    return NextResponse.json({ error: "Invalid invoice id" }, { status: 400 });
+  const publicToken = parsePublicInvoiceToken(id);
+  if (!publicToken) {
+    return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
   try {
     const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+      where: { publicToken },
       select: {
         id: true,
+        publicToken: true,
         invoiceNumber: true,
         clientName: true,
         clientEmail: true,
@@ -58,6 +60,7 @@ export async function POST(
         currency: true,
         status: true,
         razorpayPaymentLinkId: true,
+        razorpayPaymentLinkUrl: true,
       },
     });
 
@@ -71,12 +74,7 @@ export async function POST(
     }
 
     // Reuse an existing active link instead of minting duplicates.
-    const activeLink = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      select: { razorpayPaymentLinkUrl: true },
-    });
-
-    let paymentUrl: string | null = activeLink?.razorpayPaymentLinkUrl ?? null;
+    let paymentUrl: string | null = invoice.razorpayPaymentLinkUrl;
 
     if (!paymentUrl) {
       const link = await createPaymentLink({
@@ -90,7 +88,7 @@ export async function POST(
         },
         reference_id: String(invoice.id),
         notify: { email: false, sms: false, whatsapp: false },
-        callback_url: `${getAppUrl()}/invoice/${invoice.id}/pay?payment=success`,
+        callback_url: `${getAppUrl()}/invoice/${publicToken}/pay?payment=success`,
         callback_method: "get",
       });
 
@@ -104,7 +102,7 @@ export async function POST(
         },
       });
 
-      log.info("Public pay link minted", { invoiceId, paymentLinkId: link.id });
+      log.info("Public pay link minted", { invoiceId: invoice.id, paymentLinkId: link.id });
     }
 
     return NextResponse.json(
@@ -112,7 +110,7 @@ export async function POST(
       { headers: getRateLimitHeaders("recovery:action", `pay:${ip}`) },
     );
   } catch (error) {
-    log.error("Public payment link creation failed", { invoiceId, error: String(error) });
+    log.error("Public payment link creation failed", { publicToken, error: String(error) });
     const message =
       error instanceof Error && error.message.includes("Razorpay credentials")
         ? "Payment provider is not configured"

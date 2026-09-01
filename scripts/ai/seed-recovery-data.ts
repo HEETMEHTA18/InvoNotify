@@ -28,6 +28,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { settleInvoicePayment } from "../../lib/payments/settle-invoice-payment";
 import { LOCAL_HACKATHON_DEMO } from "../../lib/demo-account";
+import { createPublicInvoiceToken } from "../../lib/security/public-invoice";
 
 const prisma = new PrismaClient();
 
@@ -200,8 +201,9 @@ async function upsertInvoice(
   profile: Profile,
   fields: Prisma.InvoiceUncheckedCreateInput,
 ) {
+  const { publicToken, ...invoiceFields } = fields;
   const shared = {
-    ...fields,
+    ...invoiceFields,
     customer: profile.name,
     clientName: profile.name,
     clientEmail: profile.email,
@@ -216,7 +218,7 @@ async function upsertInvoice(
   return prisma.invoice.upsert({
     where: { invoiceNumber_ownerUserId: { invoiceNumber: fields.invoiceNumber!, ownerUserId: userId } },
     update: shared,
-    create: shared,
+    create: { ...shared, publicToken: publicToken || createPublicInvoiceToken() },
   });
 }
 
