@@ -32,8 +32,11 @@ function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-function isSerializationError(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+function isTransactionRetryable(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2034" || error.code === "P2028")
+  );
 }
 
 /**
@@ -150,10 +153,17 @@ export async function settleInvoicePayment(input: SettleInvoicePaymentInput) {
             recoveryCaseResolved,
           };
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          // Webhooks and fixture creation can perform several related writes.
+          // Allow them to complete, then retry a transaction that expired or
+          // encountered serializable contention.
+          maxWait: 10_000,
+          timeout: 30_000,
+        },
       );
     } catch (error) {
-      if (attempt < 2 && isSerializationError(error)) continue;
+      if (attempt < 2 && isTransactionRetryable(error)) continue;
       throw error;
     }
   }

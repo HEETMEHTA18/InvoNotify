@@ -13,7 +13,10 @@ export const LOCAL_HACKATHON_DEMO = {
 } as const;
 
 export function localHackathonDemoEnabled(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.DEMO_ACCOUNT_ENABLED !== "false";
+  return (
+    (process.env.NODE_ENV !== "production" && process.env.DEMO_ACCOUNT_ENABLED !== "false") ||
+    process.env.HACKATHON_DEMO_ACCOUNT_ENABLED === "true"
+  );
 }
 
 /** Maps the compact judge-facing ID to the non-routable local email identity. */

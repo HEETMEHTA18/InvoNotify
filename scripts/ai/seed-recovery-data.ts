@@ -47,6 +47,10 @@ const DAY = 86_400_000;
  */
 const PRUNE = process.argv.includes("--prune");
 
+if (process.env.NODE_ENV === "production" && process.env.HACKATHON_DEMO_SEED !== "true") {
+  throw new Error("Production demo seeding requires HACKATHON_DEMO_SEED=true.");
+}
+
 type Profile = {
   name: string;
   email: string;
