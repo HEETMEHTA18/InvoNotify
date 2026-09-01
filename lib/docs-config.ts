@@ -50,6 +50,26 @@ export const docPages: DocPageMeta[] = [
     summary:
       "The project requirements specification used for academic and product documentation.",
   },
+  {
+    slug: "ai-recovery-prd",
+    title: "AI Recovery PRD",
+    description:
+      "Prioritized Razorpay AI Revenue Recovery product requirements, module coverage, safety boundaries, and demo runbook.",
+    sourcePath: "PRD.md",
+    category: "Buildathon",
+    summary:
+      "Use this to understand the P0 recovery MVP, module status, demo account, and judging checklist.",
+  },
+  {
+    slug: "ai-recovery-todo",
+    title: "AI Recovery TODO",
+    description:
+      "Prioritized implementation checklist for the recovery modules and submission readiness.",
+    sourcePath: "docs/RAZORPAY_HACKATHON_TODO.md",
+    category: "Buildathon",
+    summary:
+      "Tracks complete P0 work, the next buildathon modules, and production hardening work.",
+  },
 ];
 
 export const docsSidebarSections = [

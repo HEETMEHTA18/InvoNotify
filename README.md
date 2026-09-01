@@ -40,6 +40,10 @@ This repository already contains backend functionality. A separate backend servi
 - Multi-channel delivery support (email, SMS, voice, Telegram mirror).
 - Dashboard analytics for KPIs, revenue trend, and risk insights.
 - Bulk imports for invoices and customers (YAML/Tally-oriented flows).
+- **P0: AI Revenue Recovery** — risk scoring, bounded action selection,
+  Razorpay Test Mode Payment Links, stopping rules, approval gates, audit trail
+  and recovery analytics. See [`PRD.md`](PRD.md) and
+  [`docs/RAZORPAY_HACKATHON_TODO.md`](docs/RAZORPAY_HACKATHON_TODO.md).
 
 ## 3. Architecture at a Glance
 
@@ -279,6 +283,18 @@ For local testing, use the Stripe CLI:
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
+### Razorpay AI Recovery (Test Mode only)
+
+```env
+RAZORPAY_KEY_ID="rzp_test_..."
+RAZORPAY_KEY_SECRET="..."
+RAZORPAY_WEBHOOK_SECRET="..."
+```
+
+Leave these unset to use the deterministic local simulation path. Never commit
+Razorpay keys, use a live key for the demo, or treat the local demo login as a
+Razorpay account.
+
 ### Voice (optional)
 
 ```env
@@ -314,6 +330,38 @@ pnpm prisma generate
 pnpm prisma migrate deploy
 pnpm dev
 ```
+
+### Razorpay AI Recovery showcase
+
+For an isolated, no-cloud local demo database:
+
+```bash
+./scripts/local-db.sh start
+export DATABASE_URL='postgresql://postgres@127.0.0.1:5433/invonotify?sslmode=disable'
+export DIRECT_URL="$DATABASE_URL"
+pnpm exec prisma migrate deploy
+```
+
+Then create the deterministic showcase portfolio and verify its safe audit
+walkthrough:
+
+```bash
+pnpm ai:seed
+pnpm ai:verify
+pnpm ai:unit
+pnpm ai:evaluate
+```
+
+Sign in at `/login` with `razorpay` / `razorpay`, then
+open `/dashboard/recovery` and select **Run Safe Demo**. It records decisions,
+policy verdicts and audit evidence without sending messages or creating payment
+links. The account is a local seeded merchant workspace; it is not connected to
+Razorpay until you deliberately configure Razorpay **Test Mode** keys. See
+[`PRD.md`](PRD.md) for the end-to-end demo runbook and
+[`docs/AI_MODEL_SETUP.md`](docs/AI_MODEL_SETUP.md) for the optional model setup.
+Run `pnpm ai:batch` for the reproducible 500-event ingestion proof, then use
+`pnpm ai:verify` for the safe 500-case recovery walkthrough. The documented v1
+API contract is at [`docs/openapi/recovery-v1.yaml`](docs/openapi/recovery-v1.yaml).
 
 If you are starting from a clean local DB and want schema sync quickly:
 

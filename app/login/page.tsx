@@ -11,8 +11,6 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LoginForm } from "./LoginForm";
 
-const emailPattern = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$";
-
 export default async function Login({
   searchParams,
 }: {
@@ -29,7 +27,7 @@ export default async function Login({
   const errorMessages = {
     signin_failed: "Invalid email or password",
     db_unavailable: "Database connection error. Please try again later.",
-    invalid_email: "Please enter a valid business email format.",
+    invalid_email: "Enter a valid business email, or use the local demo ID razorpay.",
     missing_fields: "Please fill in both email and password.",
     password_too_short: "Password must be at least 8 characters long.",
     password_too_long: "Password is too long.",
@@ -62,7 +60,8 @@ export default async function Login({
           </Link>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Enter your email and password to login.
+            Enter your email and password to login. For the local hackathon
+            showcase, use ID <code>razorpay</code>.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -76,7 +75,7 @@ export default async function Login({
               {errorMessage}
             </div>
           )}
-          <LoginForm emailPattern={emailPattern} />
+          <LoginForm />
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="underline">

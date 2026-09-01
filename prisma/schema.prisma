@@ -21,6 +21,8 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?
+  /// Recovery API role. Existing merchants default to ADMIN for backwards compatibility.
+  role          String          @default("ADMIN")
   accounts      Account[]
   sessions      Session[]
   invoices      Invoice[]
@@ -127,11 +129,27 @@ model Invoice {
   clientPhone              String               @default("")
   reminderChannel          String               @default("EMAIL")
   userId                   String?
+  razorpayPaymentLinkId    String?
+  razorpayPaymentLinkUrl   String?
+  razorpayPaymentId        String?
+
+  /// Unguessable handle for the public customer-facing pay page.
+  ///
+  /// The public pay routes MUST be keyed on this and never on `id`. `id` is a
+  /// sequential primary key, so an unauthenticated caller could walk
+  /// /api/public/invoices/1..N and harvest every merchant's customer names,
+  /// amounts and line items (OWASP API1:2023 — Broken Object Level
+  /// Authorization). A 256-bit random token is not enumerable, so possession of
+  /// the link is itself the authorization.
+  publicToken              String?              @unique
+
   customerRel              Customer?            @relation(fields: [customerId], references: [id])
   user                     User?                @relation(fields: [userId], references: [id])
   items                    InvoiceItem[]
   reminderLogs             InvoiceReminderLog[]
   payments                 Payment[]
+  recoveryCases            RecoveryCase[]
+  paymentEvents            PaymentEvent[]
 
   @@index([date])
   @@index([status])
@@ -156,25 +174,30 @@ model InvoiceItem {
 }
 
 model Customer {
-  id             Int       @id @default(autoincrement())
-  name           String
-  group          String?
-  openingBalance Decimal   @default(0) @db.Decimal(10, 2)
-  address        String?
-  city           String?
-  state          String?
-  country        String?
-  gstin          String?
-  phone          String?
-  email          String?
-  firstInvoiceAt DateTime?
-  isVipExempt    Boolean   @default(false)
-  cibilScore     Int       @default(650)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  ownerUserId    String?
-  user           User?     @relation(fields: [ownerUserId], references: [id])
-  invoices       Invoice[]
+  id                 Int       @id @default(autoincrement())
+  name               String
+  group              String?
+  openingBalance     Decimal   @default(0) @db.Decimal(10, 2)
+  address            String?
+  city               String?
+  state              String?
+  country            String?
+  gstin              String?
+  phone              String?
+  email              String?
+  firstInvoiceAt     DateTime?
+  isVipExempt        Boolean   @default(false)
+  communicationOptOut Boolean   @default(false)
+  cibilScore         Int       @default(650)
+  timezone           String    @default("Asia/Kolkata")
+  businessHoursStart Int       @default(9)
+  businessHoursEnd   Int       @default(18)
+  businessDays       Int[]     @default([1, 2, 3, 4, 5])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  ownerUserId        String?
+  user               User?     @relation(fields: [ownerUserId], references: [id])
+  invoices           Invoice[]
 
   @@index([ownerUserId])
   @@index([ownerUserId, name])
@@ -218,11 +241,14 @@ model Payment {
   amount        Decimal  @db.Decimal(10, 2)
   date          DateTime @default(now())
   method        String   @default("Manual")
-  transactionId String?
+  /// Provider payment IDs are globally unique. Manual entries leave this NULL,
+  /// which PostgreSQL permits more than once under this unique constraint.
+  transactionId String?  @unique
   note          String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  recoverySettlement RecoverySettlement?
 
   @@index([invoiceId])
 }
@@ -240,4 +266,617 @@ model InvoiceReminderLog {
   @@unique([invoiceId, reminderKey])
   @@index([targetDate])
   @@index([sentAt])
+}
+
+model RecoveryCase {
+  id                 Int      @id @default(autoincrement())
+  invoiceId          Int      @unique
+  ownerUserId        String?
+  status             String   @default("OPEN")
+  stage              String   @default("SCORING")
+  /// Immutable outstanding balance when the recovery case began. This is the
+  /// denominator for recovery attribution; it is deliberately separate from
+  /// a later invoice balance and from the model's expectedRecovery forecast.
+  amountAtRisk       Decimal  @default(0) @db.Decimal(12, 2)
+  /// Confirmed money attributed to this case from idempotent payment records.
+  /// It is never a model prediction or an action-execution estimate.
+  recoveredAmount    Decimal  @default(0) @db.Decimal(12, 2)
+  riskScore          Decimal  @default(0) @db.Decimal(5, 4)
+  paymentProbability Decimal  @default(0) @db.Decimal(5, 4)
+  expectedRecovery   Decimal  @default(0) @db.Decimal(12, 2)
+  strategy           String?
+  lastDecision       String?
+  nextActionAt       DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  invoice            Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  actions            AgentAction[]
+  runs               AgentRun[]
+  settlements        RecoverySettlement[]
+  revenueEvents      RevenueEvent[]
+  diagnosis          FailureDiagnosis?
+  decisions          RecoveryDecision[]
+  recoveryActions    RecoveryAction[]
+  promise            PromiseToPay?
+  guardrailEvals     GuardrailEvaluation[]
+  escalations        Escalation[]
+  humanReviews       HumanReview[]
+  auditLogs          AuditLog[]
+  riskAssessments    RiskAssessment[]
+
+  @@index([ownerUserId])
+  @@index([status])
+  @@index([riskScore])
+  @@index([ownerUserId, status])
+}
+
+// ===========================
+// Module B — persisted risk evidence
+// ===========================
+model RiskAssessment {
+  id                      Int      @id @default(autoincrement())
+  recoveryCaseId          Int
+  riskScore               Decimal  @db.Decimal(5, 4)
+  recoverabilityProbability Decimal @db.Decimal(5, 4)
+  priority                String
+  estimatedRecoverableAmount Decimal @db.Decimal(12, 2)
+  modelName               String
+  modelVersion            String
+  scoredAt                DateTime @default(now())
+  explanation             Json?
+  recoveryCase            RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+  featureSnapshots        FeatureSnapshot[]
+
+  @@index([recoveryCaseId, scoredAt])
+  @@index([priority, scoredAt])
+}
+
+model FeatureSnapshot {
+  id               Int      @id @default(autoincrement())
+  riskAssessmentId Int
+  features         Json
+  capturedAt       DateTime @default(now())
+  riskAssessment   RiskAssessment @relation(fields: [riskAssessmentId], references: [id], onDelete: Cascade)
+
+  @@index([riskAssessmentId])
+}
+
+/// Immutable audit row tying one recorded payment to one recovery case. The
+/// unique paymentId makes recovery credit exactly-once even when a provider
+/// retries an event. `attribution` is intentionally conservative: a case
+/// settlement is confirmed cash, while causal AI attribution is only a
+/// potential association unless a provider link proves it.
+model RecoverySettlement {
+  id                      Int          @id @default(autoincrement())
+  recoveryCaseId          Int
+  paymentId               Int          @unique
+  amount                  Decimal      @db.Decimal(12, 2)
+  attribution             String       @default("UNATTRIBUTED")
+  attributedAgentRunId    Int?
+  attributedAgentActionId Int?
+  createdAt               DateTime     @default(now())
+  recoveryCase            RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+  payment                 Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([recoveryCaseId, createdAt])
+  @@index([attributedAgentRunId])
+  @@index([attributedAgentActionId])
+}
+
+model AgentRun {
+  id              Int          @id @default(autoincrement())
+  /// Tenant that owns this sweep. Without it /api/ai/metrics cannot scope its
+  /// "recent runs" list and leaks every other merchant's sweep totals.
+  ownerUserId     String?
+  trigger         String       @default("MANUAL")
+  status          String       @default("RUNNING")
+  totalInvoices   Int          @default(0)
+  processedCount  Int          @default(0)
+  actionCount     Int          @default(0)
+  recoveredAmount Decimal      @default(0) @db.Decimal(12, 2)
+  summary         Json?
+  error           String?
+  startedAt       DateTime     @default(now())
+  completedAt     DateTime?
+  recoveryCaseId  Int?
+  recoveryCase    RecoveryCase? @relation(fields: [recoveryCaseId], references: [id], onDelete: SetNull)
+  actions         AgentAction[]
+
+  @@index([status])
+  @@index([startedAt])
+  @@index([ownerUserId, startedAt])
+}
+
+model AgentAction {
+  id               Int           @id @default(autoincrement())
+  recoveryCaseId   Int
+  agentRunId       Int?
+  invoiceId        Int?
+  actionType       String
+  channel          String?
+  riskScore        Decimal       @default(0) @db.Decimal(5, 4)
+  decision         Json?
+  reason           String?
+  urgency          String?
+  confidence       Decimal?      @db.Decimal(5, 4)
+  policyResult     String
+  policyReasons    Json?
+  approvalRequired Boolean       @default(false)
+  approvedBy       String?
+  approvedAt       DateTime?
+  status           String        @default("PENDING")
+  executionStatus  String?
+  failureReason    String?
+  fallbackUsed     Boolean       @default(false)
+  provider         String?
+  payload          Json?
+  createdAt        DateTime      @default(now())
+  completedAt      DateTime?
+  recoveryCase     RecoveryCase  @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+  agentRun         AgentRun?     @relation(fields: [agentRunId], references: [id], onDelete: SetNull)
+
+  @@index([recoveryCaseId])
+  @@index([agentRunId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WebhookEvent {
+  id          Int      @id @default(autoincrement())
+  eventId     String   @unique
+  eventType   String
+  payload     Json?
+  source      String   @default("stripe")
+  status      String   @default("RECEIVED")
+  receivedAt  DateTime @default(now())
+  processedAt DateTime?
+  error       String?
+
+  @@index([source, status])
+  @@index([eventType])
+}
+
+model PaymentEvent {
+  id              Int      @id @default(autoincrement())
+  invoiceId       Int
+  source          String   @default("razorpay")
+  eventType       String
+  razorpayEventId String?  @unique
+  paymentId       String?
+  paymentLinkId   String?
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("INR")
+  status          String   @default("RECEIVED")
+  payload         Json?
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([source, eventType])
+  @@index([razorpayEventId])
+  @@index([paymentId])
+  @@index([paymentLinkId])
+}
+
+// ===========================
+// Module A — Revenue Event Ingestion
+// ===========================
+model RevenueEvent {
+  id              Int       @id @default(autoincrement())
+  merchantId      String
+  customerId      String?
+  eventType       String
+  source          String
+  sourceEventId   String
+  status          String    @default("PENDING")
+  amount          Decimal   @db.Decimal(12, 2)
+  currency        String    @default("INR")
+  failureCode     String?
+  failureReason   String?
+  rawPayload      Json
+  normalizedAt    DateTime?
+  recoveryCaseId  Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  recoveryCase    RecoveryCase? @relation(fields: [recoveryCaseId], references: [id], onDelete: SetNull)
+  payload         EventPayload?
+  errors          EventIngestionError[]
+
+  @@index([merchantId])
+  @@index([customerId])
+  @@index([status])
+  @@index([eventType])
+  @@index([source])
+  @@index([createdAt])
+  // Provider event IDs are only idempotency keys inside a merchant/source
+  // namespace. A global key would allow one tenant to collide with another.
+  @@unique([merchantId, source, sourceEventId])
+}
+
+model EventPayload {
+  id             Int       @id @default(autoincrement())
+  revenueEventId Int       @unique
+  payload        Json
+  schemaVersion  Int       @default(1)
+  createdAt      DateTime  @default(now())
+  revenueEvent   RevenueEvent @relation(fields: [revenueEventId], references: [id], onDelete: Cascade)
+}
+
+model EventIngestionError {
+  id             Int       @id @default(autoincrement())
+  revenueEventId Int
+  code           String
+  message        String
+  severity       String    @default("ERROR")
+  createdAt      DateTime  @default(now())
+  revenueEvent   RevenueEvent @relation(fields: [revenueEventId], references: [id], onDelete: Cascade)
+
+  @@index([revenueEventId])
+  @@index([code])
+}
+
+// ===========================
+// Module C — Failure Diagnosis
+// ===========================
+model FailureTaxonomy {
+  id               Int      @id @default(autoincrement())
+  code             String   @unique
+  category         String
+  description      String
+  retryable        Boolean  @default(false)
+  actionFamily     String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  diagnoses        FailureDiagnosis[]
+}
+
+model FailureDiagnosis {
+  id               Int      @id @default(autoincrement())
+  recoveryCaseId   Int      @unique
+  taxonomyCode     String?
+  canonicalCause   String
+  category         String
+  confidence       Decimal  @db.Decimal(5, 4)
+  reasoning        String?
+  evidence         Json?
+  status           String   @default("COMPLETED")
+  modelVersion     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  recoveryCase     RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+  taxonomy         FailureTaxonomy? @relation(fields: [taxonomyCode], references: [code], onDelete: SetNull)
+  evidenceItems    DiagnosticEvidence[]
+
+  @@index([recoveryCaseId])
+  @@index([taxonomyCode])
+  @@index([category])
+  @@index([status])
+}
+
+model DiagnosticEvidence {
+  id               Int      @id @default(autoincrement())
+  diagnosisId      Int
+  source           String
+  rawValue         Json
+  interpretation   String
+  createdAt        DateTime @default(now())
+  diagnosis        FailureDiagnosis @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+
+  @@index([diagnosisId])
+}
+
+// ===========================
+// Module E — Recovery Decision Engine
+// ===========================
+model RecoveryDecision {
+  id               Int      @id @default(autoincrement())
+  recoveryCaseId   Int
+  agentRunId       Int?
+  selectedAction   String
+  channel          String?
+  expectedRecovery Decimal  @db.Decimal(12, 2)
+  expectedProbability Decimal @db.Decimal(5, 4)
+  rationale        String
+  riskScore        Decimal  @db.Decimal(5, 4)
+  confidence       Decimal  @db.Decimal(5, 4)
+  status           String   @default("PROPOSED")
+  policyVersion    String   @default("default-v1")
+  strategyVersion  String   @default("baseline-v1")
+  decidedAt        DateTime @default(now())
+  approvedBy       String?
+  approvedAt       DateTime?
+
+  recoveryCase     RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+  candidates       DecisionCandidate[]
+
+  @@index([recoveryCaseId])
+  @@index([agentRunId])
+  @@index([status])
+  @@index([decidedAt])
+}
+
+model DecisionCandidate {
+  id               Int      @id @default(autoincrement())
+  decisionId       Int
+  actionType       String
+  channel          String?
+  expectedRecovery Decimal  @db.Decimal(12, 2)
+  expectedProbability Decimal @db.Decimal(5, 4)
+  score            Decimal  @db.Decimal(5, 4)
+  reason           String
+  policyResult     String
+  policyReasons    Json?
+  rank             Int
+  createdAt        DateTime @default(now())
+  decision         RecoveryDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([decisionId])
+}
+
+// ===========================
+// Module E/F — Recovery Policies & Strategy Versions
+// ===========================
+model RecoveryPolicy {
+  id               Int      @id @default(autoincrement())
+  merchantId       String   @unique
+  name             String
+  version          Int      @default(1)
+  config           Json
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([merchantId])
+}
+
+model StrategyVersion {
+  id               Int      @id @default(autoincrement())
+  version          String   @unique
+  description      String?
+  modelConfig      Json?
+  policyConfig     Json?
+  isActive         Boolean  @default(false)
+  deployedAt       DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([isActive])
+}
+
+// ===========================
+// Module F — Recovery Execution
+// ===========================
+model RecoveryAction {
+  id               Int      @id @default(autoincrement())
+  recoveryCaseId   Int
+  decisionId       Int?
+  actionType       String
+  channel          String?
+  scheduledAt      DateTime?
+  status           String   @default("PENDING")
+  executionStatus  String?
+  provider         String?
+  providerResponse Json?
+  error            String?
+  retryCount       Int      @default(0)
+  maxRetries       Int      @default(3)
+  /// Required on externally-triggered execution requests to make a retry safe.
+  idempotencyKey   String?  @unique
+  policyVersion    String   @default("default-v1")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  completedAt      DateTime?
+  executedAt       DateTime?
+
+  recoveryCase     RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+  executions       ActionExecution[]
+
+  @@index([recoveryCaseId])
+  @@index([decisionId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model ActionExecution {
+  id               Int      @id @default(autoincrement())
+  actionId         Int
+  status           String
+  provider         String?
+  requestPayload   Json?
+  responsePayload  Json?
+  error            String?
+  durationMs       Int?
+  createdAt        DateTime @default(now())
+  action           RecoveryAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@index([actionId])
+  @@index([createdAt])
+}
+
+// ===========================
+// Module G — Promise-to-Pay
+// ===========================
+model PromiseToPay {
+  id               Int      @id @default(autoincrement())
+  recoveryCaseId   Int      @unique
+  promisedAmount   Decimal  @db.Decimal(12, 2)
+  promisedAt       DateTime
+  capturedAt       DateTime @default(now())
+  source           String   @default("OPERATOR")
+  confidence       Decimal? @db.Decimal(5, 4)
+  status           String   @default("ACTIVE")
+  fulfilledAt      DateTime?
+  fulfilledAmount  Decimal? @db.Decimal(12, 2)
+  missedAt         DateTime?
+  escalatedAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  recoveryCase     RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+  reminders        PromiseReminder[]
+  events           PromiseEvent[]
+
+  @@index([recoveryCaseId])
+  @@index([status])
+  @@index([promisedAt])
+}
+
+model PromiseReminder {
+  id               Int      @id @default(autoincrement())
+  promiseId        Int
+  scheduledAt      DateTime
+  channel          String
+  status           String   @default("PENDING")
+  sentAt           DateTime?
+  createdAt        DateTime @default(now())
+  promise          PromiseToPay @relation(fields: [promiseId], references: [id], onDelete: Cascade)
+
+  @@index([promiseId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model PromiseEvent {
+  id               Int      @id @default(autoincrement())
+  promiseId        Int
+  eventType        String
+  amount           Decimal? @db.Decimal(12, 2)
+  source           String
+  note             String?
+  createdAt        DateTime @default(now())
+  promise          PromiseToPay @relation(fields: [promiseId], references: [id], onDelete: Cascade)
+
+  @@index([promiseId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+// ===========================
+// Module H — Guardrails, Escalations, Audit
+// ===========================
+model GuardrailEvaluation {
+  id               Int      @id @default(autoincrement())
+  recoveryCaseId   Int
+  actionType       String
+  channel          String?
+  result           String
+  reasons          Json?
+  riskScore        Decimal  @db.Decimal(5, 4)
+  amountAtRisk     Decimal  @db.Decimal(12, 2)
+  attemptCount     Int
+  contactCount     Int
+  optOut           Boolean
+  evaluatedAt      DateTime @default(now())
+
+  recoveryCase     RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+
+  @@index([recoveryCaseId])
+  @@index([actionType])
+  @@index([result])
+  @@index([evaluatedAt])
+}
+
+model Escalation {
+  id               Int      @id @default(autoincrement())
+  recoveryCaseId   Int
+  reason           String
+  priority         String
+  assignedTo       String?
+  status           String   @default("OPEN")
+  resolution       String?
+  createdAt        DateTime @default(now())
+  resolvedAt       DateTime?
+  resolvedBy       String?
+
+  recoveryCase     RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+
+  @@index([recoveryCaseId])
+  @@index([status])
+  @@index([priority])
+}
+
+model HumanReview {
+  id               Int      @id @default(autoincrement())
+  recoveryCaseId   Int
+  actionId         Int?
+  reviewerId       String
+  status           String   @default("PENDING")
+  decision         String?
+  note             String?
+  createdAt        DateTime @default(now())
+  resolvedAt       DateTime?
+
+  recoveryCase     RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+
+  @@index([recoveryCaseId])
+  @@index([actionId])
+  @@index([status])
+}
+
+model AuditLog {
+  id               Int           @id @default(autoincrement())
+  recoveryCaseId   Int?
+  actionId         Int?
+  eventType        String
+  actor            String
+  before           Json?
+  after            Json?
+  metadata         Json?
+  createdAt        DateTime      @default(now())
+  recoveryCase     RecoveryCase? @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+
+  @@index([recoveryCaseId])
+  @@index([actionId])
+  @@index([eventType])
+  @@index([actor])
+  @@index([createdAt])
+}
+
+// ===========================
+// Module I — Analytics & Reporting
+// ===========================
+model RecoveryMetricsDaily {
+  id               Int      @id @default(autoincrement())
+  merchantId       String
+  date             DateTime @db.Date
+  casesDetected    Int      @default(0)
+  casesDiagnosed   Int      @default(0)
+  casesActioned    Int      @default(0)
+  casesRecovered   Int      @default(0)
+  casesStopped     Int      @default(0)
+  casesEscalated   Int      @default(0)
+  amountAtRisk     Decimal  @default(0) @db.Decimal(12, 2)
+  amountRecovered  Decimal  @default(0) @db.Decimal(12, 2)
+  recoveryRate     Decimal  @default(0) @db.Decimal(5, 4)
+  avgDaysToRecover Decimal? @db.Decimal(5, 2)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([merchantId, date])
+  @@index([merchantId, date])
+}
+
+model BatchRun {
+  id               Int      @id @default(autoincrement())
+  merchantId       String
+  trigger          String
+  status           String   @default("RUNNING")
+  totalEvents      Int      @default(0)
+  acceptedEvents   Int      @default(0)
+  rejectedEvents   Int      @default(0)
+  duplicateEvents  Int      @default(0)
+  casesCreated     Int      @default(0)
+  casesUpdated     Int      @default(0)
+  startedAt        DateTime @default(now())
+  completedAt      DateTime?
+  summary          Json?
+  error            String?
+
+  @@index([merchantId])
+  @@index([status])
+  @@index([startedAt])
 }

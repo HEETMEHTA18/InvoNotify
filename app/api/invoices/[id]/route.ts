@@ -116,6 +116,30 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const invoiceId = Number(id);
     let reminderFieldsSupported = true;
 
+    // Settlement fields are controlled by the single payment service. Allowing
+    // them through a broad invoice update bypasses Payment and RecoverySettlement
+    // audit rows, which can make a dashboard claim money it never recorded.
+    const protectedFields = [
+      "id",
+      "userId",
+      "ownerUserId",
+      "publicToken",
+      "status",
+      "amountPaid",
+      "balance",
+      "razorpayPaymentId",
+      "razorpayPaymentLinkId",
+      "razorpayPaymentLinkUrl",
+      "createdAt",
+      "updatedAt",
+    ];
+    if (protectedFields.some((field) => Object.prototype.hasOwnProperty.call(invoiceData, field))) {
+      return NextResponse.json(
+        { error: "Payment and ownership fields cannot be changed through invoice updates" },
+        { status: 400 },
+      );
+    }
+
     // User isolation: Only allow access to invoices owned by the user
     const session = await auth();
     const userId = session?.user?.id;
@@ -212,7 +236,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       // Recalculate balance based on existing amountPaid
       const amountPaid = Number(existingBase.amountPaid || 0);
       updateData.amountPaid = amountPaid;
-      updateData.balance = Number(updateData.total) - amountPaid;
+      if (Number(updateData.total) < amountPaid) {
+        return NextResponse.json(
+          { error: "Invoice total cannot be less than the amount already paid" },
+          { status: 400 },
+        );
+      }
+      updateData.balance = Math.max(0, Number(updateData.total) - amountPaid);
     }
 
     if (
@@ -521,43 +551,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 }
 
-// PATCH: Partial update (e.g., status)
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { id } = await params;
-    const data = await req.json();
-
-    let updateResult;
-    try {
-      updateResult = await prisma.invoice.updateMany({
-        where: {
-          id: Number(id),
-          OR: [{ ownerUserId: userId }, { userId }],
-        },
-        data,
-      });
-    } catch (error) {
-      if (!isReminderSchemaMismatch(error)) throw error;
-      updateResult = await prisma.invoice.updateMany({
-        where: { id: Number(id), userId },
-        data,
-      });
-    }
-
-    if (updateResult.count === 0) {
-      return NextResponse.json({ error: "Invoice not found or unauthorized" }, { status: 404 });
-    }
-
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: Number(id) },
-    });
-    return NextResponse.json(invoice);
-  } catch (error) {
-    console.error("Failed to update invoice:", error);
-    return NextResponse.json({ error: "Failed to update invoice" }, { status: 500 });
-  }
+// Financial status, amountPaid, and balance are deliberately not PATCHable.
+// They are a ledger outcome, not client-controlled invoice metadata. Use PUT
+// for invoice edits and POST /api/payments (or a signed provider webhook) for
+// a payment settlement.
+export async function PATCH() {
+  return NextResponse.json(
+    { error: "Use PUT for invoice edits or POST /api/payments to record a payment" },
+    { status: 405 },
+  );
 }

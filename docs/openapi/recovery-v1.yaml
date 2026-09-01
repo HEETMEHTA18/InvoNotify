@@ -1,0 +1,121 @@
+openapi: 3.0.3
+info:
+  title: InvoNotify Recovery API
+  version: 1.0.0
+  description: |
+    Tenant-scoped recovery APIs for the AI Revenue Recovery demo. All write
+    endpoints require an authenticated merchant session and reject cross-origin
+    state changes. Recovery action execution is simulation-only by default.
+servers:
+  - url: http://localhost:3001
+security:
+  - sessionCookie: []
+paths:
+  /api/v1/events:
+    post:
+      summary: Ingest one normalized revenue-loss event
+      responses: { '200': { description: Accepted, duplicate, or quarantined result }, '401': { description: Unauthorized } }
+  /api/v1/events/batch:
+    post:
+      summary: Ingest JSON or CSV batch events through the same safe pipeline
+      responses: { '200': { description: Accepted/rejected/duplicate totals } }
+  /api/v1/events/{eventId}/replay:
+    post:
+      summary: Safely reprocess a stored event without external execution
+      parameters: [{ $ref: '#/components/parameters/eventId' }]
+      responses: { '200': { description: Replay result } }
+  /api/v1/customers/{customerId}/recovery-profile:
+    get:
+      summary: Return PII-minimized customer and transaction recovery context
+      parameters: [{ $ref: '#/components/parameters/customerId' }]
+      responses: { '200': { description: Recovery profile } }
+  /api/v1/recovery-cases/{caseId}/score:
+    post:
+      summary: Persist explainable risk assessment and feature snapshot
+      parameters: [{ $ref: '#/components/parameters/caseId' }]
+      responses: { '200': { description: Assessment with LOW/MEDIUM/HIGH/CRITICAL priority } }
+  /api/v1/recovery-cases/{caseId}/enrich:
+    post:
+      summary: Refresh PII-minimized decision context
+      parameters: [{ $ref: '#/components/parameters/caseId' }]
+      responses: { '200': { description: Enriched recovery profile } }
+  /api/v1/recovery-cases/{caseId}/diagnose:
+    post:
+      summary: Map evidence to a canonical root cause
+      parameters: [{ $ref: '#/components/parameters/caseId' }]
+      responses: { '200': { description: Diagnosis and evidence } }
+  /api/v1/recovery-cases/{caseId}/decide:
+    post:
+      summary: Persist policy-aware decision candidates and a bounded recovery action
+      parameters: [{ $ref: '#/components/parameters/caseId' }]
+      responses: { '200': { description: Decision, guardrail verdict, and action } }
+  /api/v1/recovery-cases/{caseId}/decisions:
+    get:
+      summary: List the complete decision history and candidates for a case
+      parameters: [{ $ref: '#/components/parameters/caseId' }]
+      responses: { '200': { description: Decision history } }
+  /api/v1/recovery-cases/{caseId}/promises:
+    get:
+      summary: Fetch the active promise-to-pay for a case
+      parameters: [{ $ref: '#/components/parameters/caseId' }]
+      responses: { '200': { description: Promise record } }
+    post:
+      summary: Capture a validated promise-to-pay
+      parameters: [{ $ref: '#/components/parameters/caseId' }]
+      responses: { '201': { description: Created promise } }
+  /api/v1/promises/{promiseId}/reconcile:
+    get:
+      summary: Fetch promise reminders and outcomes
+      parameters: [{ $ref: '#/components/parameters/promiseId' }]
+      responses: { '200': { description: Promise detail } }
+    post:
+      summary: Reconcile fulfilled, partial, or missed promise against confirmed payment
+      parameters: [{ $ref: '#/components/parameters/promiseId' }]
+      responses: { '200': { description: Reconciliation result } }
+  /api/v1/recovery-actions/{actionId}:
+    get:
+      summary: Fetch action execution and audit-ready state
+      parameters: [{ $ref: '#/components/parameters/actionId' }]
+      responses: { '200': { description: Action state } }
+  /api/v1/recovery-actions/{actionId}/execute:
+    post:
+      summary: Execute a bounded action in safe simulation mode
+      parameters:
+        - $ref: '#/components/parameters/actionId'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 255 }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { mode: { type: string, enum: [SIMULATION] } } } } }
+      responses: { '200': { description: Simulated execution result }, '409': { description: Approval, terminal, or idempotency conflict } }
+  /api/v1/recovery-actions/{actionId}/cancel:
+    post:
+      summary: Cancel a pending recovery action
+      parameters: [{ $ref: '#/components/parameters/actionId' }]
+      responses: { '200': { description: Cancelled action } }
+  /api/v1/recovery-policy:
+    get:
+      summary: Read merchant recovery policy
+      responses: { '200': { description: Policy and defaults } }
+    put:
+      summary: Update merchant recovery limits (ADMIN only)
+      responses: { '200': { description: Versioned policy }, '403': { description: Admin role required } }
+  /api/v1/analytics/overview:
+    get: { summary: Recovery KPIs and provenance, responses: { '200': { description: Tenant-scoped overview } } }
+  /api/v1/analytics/funnel:
+    get: { summary: Recovery funnel and drill-down IDs, responses: { '200': { description: Funnel } } }
+  /api/v1/analytics/interventions:
+    get: { summary: Intervention performance, responses: { '200': { description: Intervention analytics } } }
+  /api/v1/analytics/root-causes:
+    get: { summary: Root-cause recovery analysis, responses: { '200': { description: Root-cause analytics } } }
+components:
+  securitySchemes:
+    sessionCookie: { type: apiKey, in: cookie, name: authjs.session-token }
+  parameters:
+    eventId: { name: eventId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    customerId: { name: customerId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    caseId: { name: caseId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    promiseId: { name: promiseId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    actionId: { name: actionId, in: path, required: true, schema: { type: integer, minimum: 1 } }

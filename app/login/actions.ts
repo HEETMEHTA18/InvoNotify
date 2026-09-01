@@ -4,6 +4,10 @@ import { signIn } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { Prisma } from "@/lib/db"
+import {
+  isLocalHackathonDemoCredential,
+  resolveLocalHackathonDemoId,
+} from "@/lib/demo-account"
 
 const STRICT_EMAIL_REGEX = /^(?=.{6,254}$)(?=.{1,64}@)(?=[A-Za-z])[A-Za-z0-9._%+-]*[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/
 const MIN_PASSWORD_LENGTH = 8
@@ -22,8 +26,9 @@ function validatePassword(password: string) {
 }
 
 export async function handleEmailSignIn(formData: FormData) {
-  const email = (formData.get("email") as string)?.trim().toLowerCase();
+  const identifier = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
+  const email = identifier ? resolveLocalHackathonDemoId(identifier) || identifier : "";
 
   if (!email || !password) {
     redirect("/login?error=missing_fields")
@@ -34,7 +39,9 @@ export async function handleEmailSignIn(formData: FormData) {
   }
 
   const passwordError = validatePassword(password)
-  if (passwordError) {
+  // `razorpay / razorpay` is a local, non-production judge demo only. All
+  // normal accounts retain the strong-password check above.
+  if (passwordError && !isLocalHackathonDemoCredential(email, password)) {
     redirect(`/login?error=${passwordError}`)
   }
 

@@ -30,8 +30,22 @@ function diffDays(later: Date, earlier: Date) {
   return Math.floor((later.getTime() - earlier.getTime()) / msInDay);
 }
 
-export function deriveInvoiceStatus(status: string | null, dueDate: Date | string | null, balance: number, now = new Date()) {
-  const normalized = (status || "Pending").trim();
+/**
+ * Invoice statuses that mean "money is still owed and still worth chasing".
+ *
+ * "Overdue" must be in this set. It is really a *materialised* form of Pending:
+ * several read paths derive the effective status and write it back to the row
+ * (app/api/customers/route.ts does this on a plain GET), so an unpaid invoice
+ * flips from "Pending" to "Overdue" on its own with no user action. Any query
+ * that selects only ["Pending", "Draft"] therefore loses the invoice the first
+ * time one of those paths runs — which is exactly how the recovery sweep went
+ * blind to every overdue invoice it was built to chase.
+ *
+ * "Paid" and "Cancelled" are excluded: there is nothing to collect.
+ */
+export const CHASEABLE_INVOICE_STATUSES = ["Pending", "Draft", "Overdue"] as const;
+
+export function deriveInvoiceStatus(status: string | null, dueDate: Date | string | null, balance: number, now = new Date()) {  const normalized = (status || "Pending").trim();
   if (normalized.toLowerCase() === "paid") return "Paid";
 
   const parsedDueDate = toDate(dueDate);

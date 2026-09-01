@@ -1,0 +1,11 @@
+# Local agent tooling and its Unix socket are not application source.
+.codegraph/
+.claude/
+.codex/
+.cursor/
+.mcp.json
+
+# Local-only configuration and database files.
+.env*
+.local-db/
+*.sock

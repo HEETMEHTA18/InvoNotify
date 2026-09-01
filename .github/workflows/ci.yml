@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint, Typecheck, Build, Test Discovery
+    name: Lint, Typecheck, Build, Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -34,6 +34,17 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # scikit-learn is optional at runtime (train.py falls back to a
+      # pure-python fit), but pinning it here keeps CI weights identical
+      # to locally trained ones.
+      - name: Install ML dependencies
+        run: pip install numpy scikit-learn
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -51,5 +62,18 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
         run: pnpm build
 
+      - name: AI Unit Tests (node:test)
+        run: pnpm ai:unit
+
+      - name: AI Logic Tests (tsx)
+        run: npx --yes tsx scripts/ai/run-ai-tests.ts
+
+      # Gates the risk model: trains on a held-out split and fails if any
+      # coefficient contradicts its expected risk sign. Catches the
+      # "trained on paid instead of defaulted" inversion, which healthy
+      # ROC-AUC and calibration do NOT catch.
+      - name: ML model gate (train/eval + polarity)
+        run: pnpm ai:eval
+
       - name: Test discovery gate
-        run: pnpm exec playwright test --list --pass-with-no-tests
+        run: npx playwright test --list --pass-with-no-tests

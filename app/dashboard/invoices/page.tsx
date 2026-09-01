@@ -272,11 +272,24 @@ export default function InvoicesPage() {
   }
 
   async function handleMarkPaid(inv: Invoice) {
+    const remaining = Number(
+      inv.balance ?? Math.max(0, Number(inv.total || inv.amount || 0) - Number(inv.amountPaid || 0)),
+    );
+    if (!Number.isFinite(remaining) || remaining <= 0) {
+      setError("This invoice has no outstanding balance to record");
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/invoices/${inv.id}`, {
-        method: "PATCH",
+      const res = await fetch("/api/payments", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Paid" }),
+        body: JSON.stringify({
+          invoiceId: inv.id,
+          amount: remaining,
+          method: "Manual reconciliation",
+          note: "Marked as paid from the invoice dashboard",
+        }),
       });
 
       if (!res.ok) {
@@ -286,6 +299,7 @@ export default function InvoicesPage() {
       }
 
       fetchInvoices({ reset: true });
+      toast.success(`Recorded ${remaining.toFixed(2)} against ${inv.invoiceNumber || `invoice #${inv.id}`}`);
     } catch {
       setError("Failed to update invoice");
     }

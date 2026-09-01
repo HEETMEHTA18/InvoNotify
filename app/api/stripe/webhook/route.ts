@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { Prisma, prisma } from "@/lib/db";
 import { getStripeWebhookSecret } from "@/lib/stripe";
+import { InvoicePaymentError, settleInvoicePayment } from "@/lib/payments/settle-invoice-payment";
 
 export const runtime = "nodejs";
 
@@ -78,51 +79,32 @@ async function recordStripePayment(session: StripePaymentSource) {
   const amountPaid = (session.amount_total || 0) / 100;
   const currency = (session.currency || "inr").toUpperCase();
 
-  return prisma.$transaction(async (tx) => {
-    const invoice = await tx.invoice.findFirst({
-      where: { id: invoiceId },
-      select: { total: true, amountPaid: true, balance: true, currency: true },
-    });
+  if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
+    return { status: "ignored" as const, reason: "Provider reported no captured amount" };
+  }
 
-    if (!invoice) {
-      throw new Error("Invoice not found");
+  try {
+    return await settleInvoicePayment({
+      invoiceId,
+      amount: amountPaid,
+      method: `Stripe Checkout (${currency})`,
+      date: new Date(),
+      note: `Stripe payment for ${session.metadata?.invoiceNumber || `#${invoiceId}`}`,
+      transactionId,
+    });
+  } catch (error) {
+    // A later valid Stripe event can arrive after a different payment already
+    // settled the invoice. It is auditable at Stripe but cannot inflate this
+    // invoice or recovery ledger.
+    if (error instanceof InvoicePaymentError && error.code === "ALREADY_PAID") {
+      return { status: "ignored" as const, reason: error.message };
     }
+    throw error;
+  }
+}
 
-    const existingPayment = await tx.payment.findFirst({
-      where: { transactionId },
-      select: { id: true },
-    });
-
-    if (existingPayment) {
-      return { skipped: true };
-    }
-
-    const newAmountPaid = Number(invoice.amountPaid) + amountPaid;
-    const newBalance = Math.max(0, Number(invoice.total) - newAmountPaid);
-    const newStatus = newBalance <= 0 ? "Paid" : "Pending";
-
-    const payment = await tx.payment.create({
-      data: {
-        invoiceId,
-        amount: amountPaid,
-        method: `Stripe Checkout (${currency})`,
-        date: new Date(),
-        note: `Stripe payment for ${session.metadata?.invoiceNumber || `#${invoiceId}`}`,
-        transactionId,
-      },
-    });
-
-    const updatedInvoice = await tx.invoice.update({
-      where: { id: invoiceId },
-      data: {
-        amountPaid: newAmountPaid,
-        balance: newBalance,
-        status: newStatus,
-      },
-    });
-
-    return { payment, updatedInvoice };
-  });
+function isUniqueConstraintError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
 export async function POST(req: NextRequest) {
@@ -136,6 +118,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let webhookEventId: number | null = null;
+
   try {
     const rawBody = await req.text();
     if (!verifyStripeSignature(rawBody, signature, webhookSecret)) {
@@ -143,9 +127,47 @@ export async function POST(req: NextRequest) {
     }
 
     const event = JSON.parse(rawBody) as {
+      id: string;
       type: string;
       data: { object: StripePaymentSource & { payment_status?: string } };
     };
+
+    // Claim the event before handling it. A failure remains retryable; the
+    // durable payment/settlement transaction makes that retry safe.
+    const existingEvent = await prisma.webhookEvent.findUnique({
+      where: { eventId: event.id },
+      select: { id: true, status: true },
+    });
+
+    if (existingEvent) {
+      if (existingEvent.status === "PROCESSED") {
+        return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+      }
+      const claimed = await prisma.webhookEvent.updateMany({
+        where: { id: existingEvent.id, status: { in: ["RECEIVED", "FAILED"] } },
+        data: { status: "PROCESSING", error: null },
+      });
+      if (claimed.count === 0) {
+        return NextResponse.json({ received: true, inProgress: true }, { status: 200 });
+      }
+      webhookEventId = existingEvent.id;
+    } else {
+      try {
+        const webhookEvent = await prisma.webhookEvent.create({
+          data: {
+            eventId: event.id,
+            eventType: event.type,
+            payload: event as unknown as object,
+            source: "stripe",
+            status: "PROCESSING",
+          },
+        });
+        webhookEventId = webhookEvent.id;
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) throw error;
+        return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+      }
+    }
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -182,11 +204,24 @@ export async function POST(req: NextRequest) {
         break;
     }
 
+    await prisma.webhookEvent.update({
+      where: { id: webhookEventId! },
+      data: { status: "PROCESSED", processedAt: new Date(), error: null },
+    });
+
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
     console.error("Stripe webhook handler failed:", error);
     const message =
       error instanceof Error ? error.message : "Webhook processing failed";
+    if (webhookEventId) {
+      await prisma.webhookEvent
+        .update({
+          where: { id: webhookEventId },
+          data: { status: "FAILED", error: message },
+        })
+        .catch(() => undefined);
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

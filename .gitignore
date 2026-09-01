@@ -47,3 +47,10 @@ test-results/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python build artefacts
+__pycache__/
+*.py[cod]
+
+# Local dev database (Claude local setup)
+/.local-db/

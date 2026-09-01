@@ -19,6 +19,20 @@
     "reminders:run": "node --env-file=.env scripts/automation/run-reminders.js",
     "integration:sarvam:voice": "node --env-file=.env scripts/integration/sarvam-voice.js",
     "integration:sarvam:vision": "node --env-file=.env scripts/integration/sarvam-vision.js",
+    "ai:test": "npx tsx scripts/ai/run-ai-tests.ts",
+    "ai:unit": "npx --yes tsx tests/ai/run-all.ts",
+    "ai:seed": "node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/seed-recovery-data.ts",
+    "ai:seed:prod": "npx tsx scripts/ai/seed-production.ts",
+    "ai:train": "python3 ai/ml/training/train.py",
+    "ai:eval": "python3 ai/ml/training/train.py --dry-run",
+    "qa:simulate-failures": "npx tsx scripts/ai/simulate-failures.ts",
+    "ai:evaluate": "npx tsx scripts/ai/evaluate-recovery.ts",
+    "ai:verify": "DISABLE_LLM_AGENT=true node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/verify-local.ts",
+    "ai:batch": "DISABLE_LLM_AGENT=true node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/run-hackathon-batch.ts",
+    "ai:scheduled-actions": "node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/process-scheduled-actions.ts",
+    "ai:verify:batch": "node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/verify-hackathon-batch.ts",
+    "ai:demo-learning": "npx tsx scripts/ai/demo-learning-loop.ts",
+    "test:e2e:recovery": "playwright test tests/e2e/recovery.spec.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -52,7 +66,8 @@
     "sarvamai": "^1.1.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "yaml": "^2.8.2"
+    "yaml": "^2.8.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

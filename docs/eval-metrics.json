@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-08-31T07:41:31.230Z",
+  "simulated": true,
+  "seed": 20260822,
+  "portfolioSize": 1000,
+  "rounds": {
+    "maxRounds": 5,
+    "gapHours": 72,
+    "cooldownHours": 48
+  },
+  "policyLimits": {
+    "autoMoneyLimit": 50000,
+    "autoNotificationLimit": 100000,
+    "maxContactAttempts": 4,
+    "contactCooldownHours": 48,
+    "maxEscalationsPerDay": 5,
+    "costToRecoverFloor": 200
+  },
+  "baseline": {
+    "label": "BASELINE (flat reminder)",
+    "recoveryRate": 0.453,
+    "recoveredAmount": 19014000,
+    "totalAtRisk": 40700000,
+    "recoveryShare": 0.46717444717444717,
+    "avgDaysToPay": 14.158940397350994,
+    "count": 1000
+  },
+  "ai": {
+    "label": "AI (risk→decision→policy)",
+    "recoveryRate": 0.929,
+    "recoveredAmount": 38936500,
+    "totalAtRisk": 40700000,
+    "recoveryShare": 0.9566707616707617,
+    "avgDaysToPay": 4.396124865446717,
+    "count": 1000
+  },
+  "deltas": {
+    "recoveryRatePts": 47.6,
+    "recoveredAmount": 19922500,
+    "avgDaysToPay": -9.762815531904277
+  },
+  "contactsPerRecovery": 0.7330462863293864,
+  "boundedOutcomes": {
+    "blocked": 21,
+    "stopped": 0,
+    "exhausted": 50,
+    "unapproved": 0
+  }
+}

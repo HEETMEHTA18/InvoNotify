@@ -691,7 +691,8 @@ function CreateInvoiceContent() {
           invoiceNumber,
           date,
           dueDate,
-          status: "Pending", // Or keep existing if editing
+          // Payment state is controlled only by /api/payments or a signed
+          // provider webhook; editing invoice details must not reopen/settle it.
           currency,
           note,
           items,

@@ -7,26 +7,21 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { handleEmailSignIn } from "./actions";
 import { Eye, EyeOff } from "lucide-react";
 
-type Props = {
-  emailPattern: string;
-};
-
-export function LoginForm({ emailPattern }: Props) {
+export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
     <form action={handleEmailSignIn} noValidate>
       <div className="grid gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Email or demo ID</Label>
           <Input
             id="email"
             name="email"
-            type="email"
-            placeholder="demo@example.com"
-            pattern={emailPattern}
-            title="Use a valid email address like name@company.com"
-            autoComplete="email"
+            type="text"
+            placeholder="you@company.com or razorpay"
+            title="Use a valid email address, or razorpay for the local demo"
+            autoComplete="username"
             required
           />
         </div>
@@ -58,8 +53,8 @@ export function LoginForm({ emailPattern }: Props) {
             </button>
           </div>
           <p className="text-xs text-gray-500">
-            Password must be at least 8 characters and include letters and
-            numbers.
+            Passwords require letters and numbers. The local-only demo accepts
+            the credentials shown in the README.
           </p>
         </div>
         <SubmitButton text="Login" />

@@ -1,0 +1,27 @@
+{
+  "version": {
+    "name": "payment-risk-v1",
+    "trainedAt": "2026-08-22T17:01:53.439039+00:00",
+    "source": "trained",
+    "backend": "scikit-learn",
+    "dataset": "synthetic",
+    "datasetNote": "generated from known logistic coefficients (samples=4000, seed=42)",
+    "predicts": "P(invoice not paid) - riskScore, matching risk-model.ts",
+    "trainRows": 3200,
+    "testRows": 800
+  },
+  "intercept": 0.6713983737415284,
+  "weights": {
+    "amountDue": 0.0627296870613867,
+    "daysOverdue": 1.683021306437647,
+    "customerAgeDays": -0.7316276124923478,
+    "previousInvoiceCount": -0.4259901653863891,
+    "previousLatePayments": 1.0038874456585345,
+    "averagePaymentDelayDays": 0.89490903848464,
+    "paymentSuccessRate": -2.33547573562813,
+    "previousReminders": 0.7091650235468064,
+    "isVipExempt": -1.1249968780639712,
+    "cibilScore": -0.8987216408801276,
+    "humanEngaged": -0.3901925621412421
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-08-22T17:01:53.439039+00:00",
+  "modelVersion": {
+    "name": "payment-risk-v1",
+    "trainedAt": "2026-08-22T17:01:53.439039+00:00",
+    "source": "trained",
+    "backend": "scikit-learn",
+    "dataset": "synthetic",
+    "datasetNote": "generated from known logistic coefficients (samples=4000, seed=42)",
+    "predicts": "P(invoice not paid) - riskScore, matching risk-model.ts",
+    "trainRows": 3200,
+    "testRows": 800
+  },
+  "polarityViolations": [],
+  "train": {
+    "n": 3200,
+    "threshold": 0.5,
+    "baseDefaultRate": 0.5238,
+    "accuracy": 0.69,
+    "precision": 0.6915,
+    "recall": 0.7369,
+    "f1": 0.7135,
+    "rocAuc": 0.7547,
+    "brierScore": 0.2008,
+    "confusionMatrix": {
+      "truePositive": 1235,
+      "falsePositive": 551,
+      "trueNegative": 973,
+      "falseNegative": 441
+    },
+    "calibration": [
+      {
+        "bin": "0.0-0.2",
+        "count": 277,
+        "predictedDefaultRate": 0.1389,
+        "observedDefaultRate": 0.1408
+      },
+      {
+        "bin": "0.2-0.4",
+        "count": 699,
+        "predictedDefaultRate": 0.3072,
+        "observedDefaultRate": 0.2961
+      },
+      {
+        "bin": "0.4-0.6",
+        "count": 945,
+        "predictedDefaultRate": 0.5052,
+        "observedDefaultRate": 0.5005
+      },
+      {
+        "bin": "0.6-0.8",
+        "count": 940,
+        "predictedDefaultRate": 0.6981,
+        "observedDefaultRate": 0.7106
+      },
+      {
+        "bin": "0.8-1.0",
+        "count": 339,
+        "predictedDefaultRate": 0.853,
+        "observedDefaultRate": 0.8525
+      }
+    ]
+  },
+  "test": {
+    "n": 800,
+    "threshold": 0.5,
+    "baseDefaultRate": 0.5238,
+    "accuracy": 0.6813,
+    "precision": 0.6783,
+    "recall": 0.7446,
+    "f1": 0.7099,
+    "rocAuc": 0.7504,
+    "brierScore": 0.202,
+    "confusionMatrix": {
+      "truePositive": 312,
+      "falsePositive": 148,
+      "trueNegative": 233,
+      "falseNegative": 107
+    },
+    "calibration": [
+      {
+        "bin": "0.0-0.2",
+        "count": 64,
+        "predictedDefaultRate": 0.1338,
+        "observedDefaultRate": 0.0781
+      },
+      {
+        "bin": "0.2-0.4",
+        "count": 170,
+        "predictedDefaultRate": 0.31,
+        "observedDefaultRate": 0.3294
+      },
+      {
+        "bin": "0.4-0.6",
+        "count": 224,
+        "predictedDefaultRate": 0.5025,
+        "observedDefaultRate": 0.4821
+      },
+      {
+        "bin": "0.6-0.8",
+        "count": 247,
+        "predictedDefaultRate": 0.6964,
+        "observedDefaultRate": 0.6883
+      },
+      {
+        "bin": "0.8-1.0",
+        "count": 95,
+        "predictedDefaultRate": 0.8532,
+        "observedDefaultRate": 0.8421
+      }
+    ]
+  }
+}
