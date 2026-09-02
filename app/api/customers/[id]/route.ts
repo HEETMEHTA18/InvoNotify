@@ -15,6 +15,23 @@ function normalizeCibilScore(value: unknown) {
   return Math.max(300, Math.min(900, Math.round(score)));
 }
 
+function customerContactWindow(data: Record<string, unknown>) {
+  const keys = ["timezone", "businessHoursStart", "businessHoursEnd", "businessDays"];
+  if (!keys.some((key) => data[key] !== undefined)) return undefined;
+  const timezone = typeof data.timezone === "string" ? data.timezone.trim() : "";
+  const start = Number(data.businessHoursStart);
+  const end = Number(data.businessHoursEnd);
+  const businessDays = Array.isArray(data.businessDays) ? data.businessDays.map(Number) : [];
+  try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(); } catch { throw new Error("A valid IANA timezone is required"); }
+  if (!Number.isInteger(start) || start < 0 || start > 23 || !Number.isInteger(end) || end < 1 || end > 24 || end <= start) {
+    throw new Error("Contact hours must be whole hours with an end after the start");
+  }
+  if (businessDays.length === 0 || businessDays.some((day) => !Number.isInteger(day) || day < 0 || day > 6)) {
+    throw new Error("Choose at least one valid contact day");
+  }
+  return { timezone, businessHoursStart: start, businessHoursEnd: end, businessDays: [...new Set(businessDays)].sort() };
+}
+
 // GET: Single customer with full invoice history
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -174,6 +191,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const data = await req.json();
+    const contactWindow = customerContactWindow(data);
 
     const updateResult = await prisma.customer.updateMany({
       where: { id: customerId, ownerUserId: userId },
@@ -188,6 +206,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         gstin: data.gstin ?? undefined,
         phone: data.phone ?? undefined,
         email: data.email ?? undefined,
+        ...(contactWindow || {}),
       },
     });
 

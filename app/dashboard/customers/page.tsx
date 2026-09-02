@@ -30,6 +30,10 @@ type Customer = {
   state: string | null;
   openingBalance: string | number;
   cibilScore: number;
+  timezone: string;
+  businessHoursStart: number;
+  businessHoursEnd: number;
+  businessDays: number[];
   createdAt: string;
   overdueInvoiceCount?: number;
   maxOverdueDays?: number;
@@ -71,6 +75,10 @@ export default function CustomersPage() {
   const [state, setState] = useState("");
   const [openingBalance, setOpeningBalance] = useState("0");
   const [cibilScore, setCibilScore] = useState("650");
+  const [timezone, setTimezone] = useState("Asia/Kolkata");
+  const [businessHoursStart, setBusinessHoursStart] = useState("9");
+  const [businessHoursEnd, setBusinessHoursEnd] = useState("18");
+  const [businessDays, setBusinessDays] = useState<number[]>([1, 2, 3, 4, 5]);
 
   const customerFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,6 +90,10 @@ export default function CustomersPage() {
     setState("");
     setOpeningBalance("0");
     setCibilScore("650");
+    setTimezone("Asia/Kolkata");
+    setBusinessHoursStart("9");
+    setBusinessHoursEnd("18");
+    setBusinessDays([1, 2, 3, 4, 5]);
     setEditingCustomerId(null);
   }
 
@@ -99,7 +111,17 @@ export default function CustomersPage() {
     setState(customer.state || "");
     setOpeningBalance(String(Number(customer.openingBalance || 0)));
     setCibilScore(String(customer.cibilScore || 650));
+    setTimezone(customer.timezone || "Asia/Kolkata");
+    setBusinessHoursStart(String(customer.businessHoursStart ?? 9));
+    setBusinessHoursEnd(String(customer.businessHoursEnd ?? 18));
+    setBusinessDays(customer.businessDays?.length ? customer.businessDays : [1, 2, 3, 4, 5]);
     setOpenCreateDialog(true);
+  }
+
+  function toggleBusinessDay(day: number) {
+    setBusinessDays((current) => current.includes(day)
+      ? current.filter((value) => value !== day)
+      : [...current, day].sort((a, b) => a - b));
   }
 
   async function fetchCustomers() {
@@ -165,6 +187,10 @@ export default function CustomersPage() {
           state,
           openingBalance: Number(openingBalance || 0),
           cibilScore: Number(cibilScore || 650),
+          timezone,
+          businessHoursStart: Number(businessHoursStart),
+          businessHoursEnd: Number(businessHoursEnd),
+          businessDays,
         }),
       });
 
@@ -569,6 +595,32 @@ export default function CustomersPage() {
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 placeholder="650"
               />
+            </div>
+            <div className="sm:col-span-2 rounded-lg border border-violet-200 bg-violet-50 p-3">
+              <p className="text-xs font-semibold text-violet-900 uppercase tracking-wide">AI contact window</p>
+              <p className="mt-1 text-xs text-violet-800">The recovery agent never sends a reminder or payment link outside this customer&apos;s selected local hours.</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600">Timezone</label>
+                  <input value={timezone} onChange={(e) => setTimezone(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="Asia/Kolkata" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600">From (local hour)</label>
+                  <input type="number" min={0} max={23} value={businessHoursStart} onChange={(e) => setBusinessHoursStart(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600">Until (local hour)</label>
+                  <input type="number" min={1} max={24} value={businessHoursEnd} onChange={(e) => setBusinessHoursEnd(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2">
+                {[[0, "Sun"], [1, "Mon"], [2, "Tue"], [3, "Wed"], [4, "Thu"], [5, "Fri"], [6, "Sat"]].map(([day, label]) => (
+                  <label key={day} className="flex items-center gap-1.5 text-xs text-gray-700">
+                    <input type="checkbox" checked={businessDays.includes(day as number)} onChange={() => toggleBusinessDay(day as number)} />
+                    {label}
+                  </label>
+                ))}
+              </div>
             </div>
 
             <DialogFooter className="sm:col-span-2 pt-3">

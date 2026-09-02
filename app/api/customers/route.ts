@@ -16,6 +16,24 @@ function normalizeCibilScore(value: unknown) {
     return Math.max(300, Math.min(900, Math.round(score)));
 }
 
+function customerContactWindow(data: Record<string, unknown>) {
+    const keys = ["timezone", "businessHoursStart", "businessHoursEnd", "businessDays"];
+    if (!keys.some((key) => data[key] !== undefined)) return undefined;
+
+    const timezone = typeof data.timezone === "string" ? data.timezone.trim() : "";
+    const start = Number(data.businessHoursStart);
+    const end = Number(data.businessHoursEnd);
+    const businessDays = Array.isArray(data.businessDays) ? data.businessDays.map(Number) : [];
+    try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(); } catch { throw new Error("A valid IANA timezone is required"); }
+    if (!Number.isInteger(start) || start < 0 || start > 23 || !Number.isInteger(end) || end < 1 || end > 24 || end <= start) {
+        throw new Error("Contact hours must be whole hours with an end after the start");
+    }
+    if (businessDays.length === 0 || businessDays.some((day) => !Number.isInteger(day) || day < 0 || day > 6)) {
+        throw new Error("Choose at least one valid contact day");
+    }
+    return { timezone, businessHoursStart: start, businessHoursEnd: end, businessDays: [...new Set(businessDays)].sort() };
+}
+
 async function findCustomersForUser(userId: string) {
     try {
         return await prisma.customer.findMany({
@@ -222,6 +240,7 @@ export async function POST(req: NextRequest) {
 
         const cibilScoreValue = Number.isFinite(cibilScore) ? Math.max(300, Math.min(900, Math.round(cibilScore))) : 650;
 
+        const contactWindow = customerContactWindow(data);
         const customerData: Prisma.CustomerUncheckedCreateInput = {
             name: data.name,
             group: data.group || null,
@@ -234,6 +253,7 @@ export async function POST(req: NextRequest) {
             phone: data.phone || null,
             email: data.email || null,
             ownerUserId: userId,
+            ...(contactWindow || {}),
         };
 
         const existing = await prisma.customer.findFirst({
