@@ -31,20 +31,6 @@ const text = (max: number) => z.string().trim().max(max);
 /** A money amount a client may legitimately state (rates, quantities). */
 const money = z.coerce.number().finite().min(0).max(1_000_000_000);
 
-/**
- * A boolean from a form, query string or JSON body.
- *
- * `z.coerce.boolean()` is `Boolean(value)`, which makes the string "false"
- * become `true` — the exact opposite of what a caller sending `"false"` means.
- * Parse the common textual spellings explicitly instead.
- */
-const bool = z.union([
-  z.boolean(),
-  z
-    .enum(["true", "false", "1", "0", "yes", "no", "on", "off"])
-    .transform((v) => v === "true" || v === "1" || v === "yes" || v === "on"),
-]);
-
 const isoDate = z
   .union([z.string().trim().min(1), z.date()])
   .transform((v) => (v instanceof Date ? v : new Date(v)))

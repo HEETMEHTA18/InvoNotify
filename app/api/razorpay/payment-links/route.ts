@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { createPaymentLink, getRazorpayKeyId } from "@/lib/razorpay";
+import { createPaymentLink } from "@/lib/razorpay";
 
 export async function GET(req: NextRequest) {
   try {

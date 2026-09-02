@@ -39,10 +39,7 @@ test.describe("AI Revenue Recovery Flow", () => {
   });
 
   test("shows empty state when no cases", async ({ page }) => {
-    // If no cases exist, show empty state
-    const emptyState = page.locator("text=No recovery cases yet");
-    // This may or may not be visible depending on data
-    // Just verify the page loads without errors
+    // The shared demo database can contain cases; verify the page still loads.
     await expect(page.locator("text=AI Revenue Recovery")).toBeVisible();
   });
 

@@ -6,7 +6,6 @@ import {
   resolveRecoveryCaseForPaidInvoice,
 } from "@/lib/ai/orchestrator";
 import type {
-  InvoiceCreatedEvent,
   InvoiceOverdueEvent,
   InvoicePaidEvent,
   RazorpayPaymentLinkEvent,
