@@ -1,4 +1,4 @@
-export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 export type ModelVersion = {
   name: string;
@@ -60,6 +60,7 @@ export type RiskScore = {
 };
 
 export function riskLevelFromScore(score: number): RiskLevel {
+  if (score >= 0.85) return "CRITICAL";
   if (score >= 0.7) return "HIGH";
   if (score >= 0.4) return "MEDIUM";
   return "LOW";

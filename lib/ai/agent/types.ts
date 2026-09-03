@@ -11,10 +11,10 @@ export const ALLOWED_ACTIONS = [
 
 export type AllowedAction = (typeof ALLOWED_ACTIONS)[number];
 
-export const ALLOWED_CHANNELS = ["EMAIL", "SMS", "BOTH"] as const;
+export const ALLOWED_CHANNELS = ["EMAIL", "SMS", "WHATSAPP", "BOTH", "EMAIL_WHATSAPP"] as const;
 export type Channel = (typeof ALLOWED_CHANNELS)[number];
 
-export type Urgency = "LOW" | "MEDIUM" | "HIGH";
+export type Urgency = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 export type AgentDecision = {
   recommendedAction: AllowedAction;
@@ -49,6 +49,6 @@ export type DecisionInput = {
 
 export function normalizeUrgency(value: unknown): Urgency {
   const raw = String(value || "").toUpperCase();
-  if (raw === "LOW" || raw === "MEDIUM" || raw === "HIGH") return raw;
+  if (raw === "LOW" || raw === "MEDIUM" || raw === "HIGH" || raw === "CRITICAL") return raw;
   return "MEDIUM";
 }

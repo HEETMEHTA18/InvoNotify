@@ -124,6 +124,7 @@ const executePaymentLinkAction = async (input: ExecuteActionInput): Promise<Acti
 
     // Create new payment link if we don't have one yet
     if (!paymentLinkUrl) {
+      const notifyWhatsApp = decision.channel === "WHATSAPP" || decision.channel === "BOTH" || decision.channel === "EMAIL_WHATSAPP";
       const paymentLink = await createPaymentLink({
         amount: Math.round(invoice.balance),
         currency: invoice.currency || "INR",
@@ -134,7 +135,7 @@ const executePaymentLinkAction = async (input: ExecuteActionInput): Promise<Acti
           contact: invoice.clientPhone,
         },
         reference_id: String(invoiceId),
-        notify: { email: true, sms: false, whatsapp: false },
+        notify: { email: true, sms: false, whatsapp: notifyWhatsApp },
         callback_url: `${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invoice/${invoiceId}/pay?payment=success`,
         callback_method: "get",
       });
@@ -206,26 +207,31 @@ const executeReminderAction = async (input: ExecuteActionInput): Promise<ActionR
   });
 
   if (sendResult.sent) {
+    const primaryChannel = sendResult.channels.includes("WHATSAPP")
+      ? "whatsapp"
+      : sendResult.channels.includes("EMAIL")
+        ? "email"
+        : "multi-channel";
     return {
       actionType: decision.recommendedAction,
       status: "EXECUTED",
       channel: decision.channel,
       payload: { channels: sendResult.channels },
       fallbackUsed: false,
-      provider: "email",
+      provider: primaryChannel,
       completedAt: now,
     };
   }
 
-  // Email failed - escalate to human (no SMS per MVP requirements)
+  // Channel failed - escalate to human
   return {
     actionType: decision.recommendedAction,
     status: "FAILED",
     channel: decision.channel,
-    payload: { emailReason: sendResult.reason },
+    payload: { channelReason: sendResult.reason },
     fallbackUsed: false,
     failureReason: `${sendResult.reason}; escalated to human review`,
-    provider: "email",
+    provider: decision.channel?.toLowerCase() || "unknown",
     completedAt: now,
   };
 };

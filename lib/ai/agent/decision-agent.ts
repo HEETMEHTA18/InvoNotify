@@ -1,12 +1,21 @@
-import type { AgentDecision, DecisionInput } from "./types";
+import type { AgentDecision, DecisionInput, Channel } from "./types";
 import { callLlm } from "./llm-provider";
 import { POLICY_LIMITS } from "../policy/engine";
+import { isWhatsAppConfigured } from "@/lib/whatsapp";
 
 /**
  * Deterministic fallback policy used when no LLM is configured or the LLM
  * output is invalid. Mirrors the recommendations a well-trained agent would
  * produce and guarantees the pipeline always returns a decision.
  */
+function chooseChannel(invoiceChannel?: string | null): Channel {
+  // If the invoice has a specific channel preference, respect it
+  if (invoiceChannel === "WHATSAPP" && isWhatsAppConfigured()) return "WHATSAPP";
+  if (invoiceChannel === "EMAIL_WHATSAPP" && isWhatsAppConfigured()) return "EMAIL_WHATSAPP";
+  if (invoiceChannel === "BOTH" && isWhatsAppConfigured()) return "EMAIL_WHATSAPP";
+  return "EMAIL";
+}
+
 function rulesDecision(input: DecisionInput): AgentDecision {
   const c = input.context;
   const risk = c.risk.riskLevel;
@@ -15,6 +24,7 @@ function rulesDecision(input: DecisionInput): AgentDecision {
   const alreadyReminded = c.features.previousReminders > 0;
   const hasPaymentLink = input.priorActions.includes("CREATE_PAYMENT_LINK");
   const everReminded = input.priorActions.includes("SEND_REMINDER");
+  const channel = chooseChannel(c.invoice.reminderChannel);
 
   // Learning loop: if we have trusted historical evidence for this segment,
   // prefer the proven strategy (unless the case is already paid/stopped).
@@ -36,15 +46,26 @@ function rulesDecision(input: DecisionInput): AgentDecision {
   if (hasPaymentLink) {
     return {
       recommendedAction: "RESEND_PAYMENT_LINK",
-      channel: "EMAIL",
-      urgency: risk === "HIGH" ? "HIGH" : "MEDIUM",
+      channel,
+      urgency: risk === "HIGH" || risk === "CRITICAL" ? "HIGH" : "MEDIUM",
       reason: "A payment link already exists for this invoice; resending is the lowest-friction next step.",
       confidence: 0.9,
       modelUsed: "rules",
     };
   }
 
-  if (risk === "HIGH" || balance >= POLICY_LIMITS.autoMoneyLimit) {
+  if (risk === "CRITICAL" || (risk === "HIGH" && balance >= POLICY_LIMITS.autoMoneyLimit)) {
+    return {
+      recommendedAction: "ESCALATE_TO_HUMAN",
+      channel: "EMAIL",
+      urgency: "CRITICAL",
+      reason: "Critical risk or very large balance requires human approval before any money action is taken.",
+      confidence: 0.97,
+      modelUsed: "rules",
+    };
+  }
+
+  if (risk === "HIGH") {
     return {
       recommendedAction: "ESCALATE_TO_HUMAN",
       channel: "EMAIL",
@@ -59,7 +80,7 @@ function rulesDecision(input: DecisionInput): AgentDecision {
   if (learnedAction && !everReminded && !alreadyReminded) {
     return {
       recommendedAction: learnedAction,
-      channel: "EMAIL",
+      channel,
       urgency: risk === "MEDIUM" ? "MEDIUM" : "LOW",
       reason: `Learning loop: "${learnedAction}" has the best conversion history for ${risk}-risk customers in this account.`,
       confidence: 0.82,
@@ -70,7 +91,7 @@ function rulesDecision(input: DecisionInput): AgentDecision {
   if (risk === "MEDIUM" || everReminded) {
     return {
       recommendedAction: "CREATE_PAYMENT_LINK",
-      channel: "EMAIL",
+      channel,
       urgency: "MEDIUM",
       reason: "Customer has a meaningful recovery probability; a payment link removes payment friction.",
       confidence: 0.85,
@@ -81,7 +102,7 @@ function rulesDecision(input: DecisionInput): AgentDecision {
   if (daysOverdue >= 1 && !alreadyReminded) {
     return {
       recommendedAction: "SEND_REMINDER",
-      channel: "EMAIL",
+      channel,
       urgency: "LOW",
       reason: "First touch for a low-risk customer; a friendly reminder is sufficient.",
       confidence: 0.9,
@@ -91,7 +112,7 @@ function rulesDecision(input: DecisionInput): AgentDecision {
 
   return {
     recommendedAction: "SCHEDULE_FOLLOWUP",
-    channel: "EMAIL",
+    channel,
     urgency: "LOW",
     reason: "Customer has been contacted; schedule a follow-up to re-engage later.",
     confidence: 0.8,

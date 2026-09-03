@@ -163,6 +163,32 @@ export default function RecoveryPage() {
     }
   };
 
+  const handleCreatePaymentLink = async (invoiceId: number): Promise<string | null> => {
+    try {
+      const res = await fetch("/api/razorpay/payment-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      const paymentLinkUrl = body.shortUrl || body.paymentLinkUrl || null;
+
+      if (!res.ok && res.status !== 409) {
+        throw new Error(body.error || "Could not create Razorpay Test Mode payment link");
+      }
+      if (!paymentLinkUrl) {
+        throw new Error("Razorpay did not return a checkout URL");
+      }
+
+      toast.success(res.status === 409 ? "Existing Razorpay Test Mode link loaded" : "Razorpay Test Mode link created");
+      return paymentLinkUrl;
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Could not create Razorpay Test Mode payment link");
+      return null;
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       <RecoveryOverview
@@ -190,6 +216,7 @@ export default function RecoveryPage() {
           detail={detail.data as never}
           loading={detailLoading}
           onApprove={handleApprove}
+          onCreatePaymentLink={handleCreatePaymentLink}
         />
       )}
     </div>

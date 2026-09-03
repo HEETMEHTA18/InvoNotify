@@ -5,7 +5,7 @@ import type { RecoveryContext } from "../../../lib/ai/context";
 
 function ctx(overrides: Record<string, unknown> = {}): RecoveryContext {
   return {
-    invoice: { id: 1, invoiceNumber: "INV-1001", clientName: "Acme", clientEmail: "a@b.c", clientPhone: "", total: 24500, amountPaid: 0, balance: 24500, currency: "INR", status: "Pending", dueDate: new Date(Date.now() - 7 * 86400000), daysOverdue: 7, customerId: null, razorpayPaymentLinkId: null, razorpayPaymentLinkUrl: null },
+    invoice: { id: 1, invoiceNumber: "INV-1001", clientName: "Acme", clientEmail: "a@b.c", clientPhone: "", total: 24500, amountPaid: 0, balance: 24500, currency: "INR", status: "Pending", dueDate: new Date(Date.now() - 7 * 86400000), daysOverdue: 7, customerId: null, razorpayPaymentLinkId: null, razorpayPaymentLinkUrl: null, reminderChannel: "EMAIL" },
     customer: { id: null, name: "Acme", email: "a@b.c", isVipExempt: false, communicationOptOut: false, cibilScore: 700, previousInvoiceCount: 8, previousLatePayments: 2, averagePaymentDelayDays: 3, paymentSuccessRate: 0.75, customerAgeDays: 400, historyCount: 8 },
     risk: { riskScore: 0.5, paymentProbability: 0.5, expectedRecovery: 12250, amountDue: 24500, riskLevel: "MEDIUM", contributions: [], modelVersion: { name: "test", trainedAt: "", source: "heuristic-calibration" } },
     features: { amountDue: 24500, daysOverdue: 7, customerAgeDays: 400, previousInvoiceCount: 8, previousLatePayments: 2, averagePaymentDelayDays: 3, paymentSuccessRate: 0.75, previousReminders: 0, isVipExempt: false, communicationOptOut: false, cibilScore: 700, humanEngaged: false },

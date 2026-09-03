@@ -7,6 +7,7 @@ import QRCode from "qrcode";
 import { buildPaymentPayload, isValidPaymentPayload } from "@/lib/payment-qr";
 import { getFallbackQrPayloadFromCodebase } from "@/lib/bank-qr-fallback";
 import { createPaymentLink } from "@/lib/razorpay";
+import { isWhatsAppConfigured, sendWhatsAppPaymentReminder } from "@/lib/whatsapp";
 import {
   ReminderChannel,
   ReminderType,
@@ -46,10 +47,15 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
   }
 
   const reminderChannel = params.channelOverride ?? normalizeReminderChannel(invoice.reminderChannel);
-  const useEmail = reminderChannel === "EMAIL" || reminderChannel === "BOTH";
+  const useEmail = reminderChannel === "EMAIL" || reminderChannel === "BOTH" || reminderChannel === "EMAIL_WHATSAPP";
+  const useWhatsApp = (reminderChannel === "WHATSAPP" || reminderChannel === "BOTH" || reminderChannel === "EMAIL_WHATSAPP") && isWhatsAppConfigured();
+  const whatsappNumber = invoice.clientPhone || null;
 
   if (useEmail && !invoice.clientEmail) {
     return { sent: false, invoiceId: invoice.id, reason: "Client email missing" };
+  }
+  if (useWhatsApp && !whatsappNumber) {
+    // Fall back to email only if no phone number
   }
 
   const actingUserId = invoice.ownerUserId || params.fallbackUserId || null;
@@ -199,6 +205,64 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
     } catch (error) {
       console.error("Gmail API send failed:", error instanceof Error ? error.message : error);
       return { sent: false, invoiceId: invoice.id, reason: `Gmail API Error: ${error instanceof Error ? error.message : "Unknown error"}` };
+    }
+  }
+
+  // WhatsApp channel
+  if (useWhatsApp && whatsappNumber) {
+    try {
+      const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      let checkoutUrl: string | null = invoice.razorpayPaymentLinkUrl || null;
+
+      if (!checkoutUrl && !invoice.razorpayPaymentLinkId) {
+        try {
+          const link = await createPaymentLink({
+            amount: Math.round(Number(invoice.balance)),
+            currency: invoice.currency || "INR",
+            description: `Payment for Invoice ${invoice.invoiceNumber || `#${invoice.id}`}`,
+            customer: {
+              name: invoice.clientName || undefined,
+              email: invoice.clientEmail || undefined,
+              contact: whatsappNumber || undefined,
+            },
+            notify: { email: false, sms: false, whatsapp: false },
+            reference_id: String(invoice.id),
+            callback_url: `${appUrl}/api/webhooks/razorpay`,
+            callback_method: "get",
+          });
+          checkoutUrl = link.short_url || null;
+
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              razorpayPaymentLinkId: link.id,
+              razorpayPaymentLinkUrl: link.short_url || null,
+            },
+          });
+        } catch (linkError) {
+          console.error("Failed to create Razorpay payment link for WhatsApp:", linkError);
+        }
+      }
+
+      const waResult = await sendWhatsAppPaymentReminder({
+        to: whatsappNumber,
+        customerName: invoice.clientName || invoice.customer || "Customer",
+        invoiceNumber: invoice.invoiceNumber || String(invoice.id),
+        amountDue: Number(invoice.balance).toLocaleString(),
+        currency: invoice.currency || "INR",
+        dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : null,
+        paymentLinkUrl: checkoutUrl,
+        daysOverdue: params.daysOverdue ?? 0,
+        senderName: invoice.senderName || "InvoNotify",
+      });
+
+      if (waResult.ok) {
+        channelsSent.push("WHATSAPP");
+      } else {
+        console.error("WhatsApp send failed:", waResult.error);
+      }
+    } catch (error) {
+      console.error("WhatsApp channel error:", error instanceof Error ? error.message : error);
     }
   }
 

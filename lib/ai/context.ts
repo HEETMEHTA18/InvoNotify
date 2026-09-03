@@ -31,6 +31,7 @@ export type RecoveryContext = {
     customerId: number | null;
     razorpayPaymentLinkId: string | null;
     razorpayPaymentLinkUrl: string | null;
+    reminderChannel: string;
   };
   customer: {
     id: number | null;
@@ -121,6 +122,7 @@ export async function buildRecoveryContext(invoiceId: number): Promise<RecoveryC
       customerId: invoice.customerId,
       razorpayPaymentLinkId: invoice.razorpayPaymentLinkId,
       razorpayPaymentLinkUrl: invoice.razorpayPaymentLinkUrl,
+      reminderChannel: invoice.reminderChannel || "EMAIL",
     },
     customer: {
       id: invoice.customerId,
