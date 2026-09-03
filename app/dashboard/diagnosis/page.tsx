@@ -23,14 +23,13 @@ type RecoveryCase = {
   stage: string;
   riskScore: number;
   expectedRecovery: number;
-  invoice: {
-    invoiceNumber: string;
-    clientName: string;
-    balance: number;
-    currency: string;
-    dueDate: string | null;
-  };
-  actions: Array<{ status: string; actionType: string }>;
+  invoiceNumber: string;
+  clientName: string;
+  amountDue: number;
+  currency: string;
+  daysOverdue: number;
+  lastActionType: string | null;
+  lastActionStatus: string | null;
 };
 
 const STAGE_COLORS: Record<string, string> = {
@@ -272,10 +271,10 @@ export default function DiagnosisPage() {
                     const risk = getRiskLevel(c.riskScore);
                     return (
                       <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
-                        <td className="py-3 px-2 font-medium">{c.invoice.invoiceNumber}</td>
-                        <td className="py-3 px-2">{c.invoice.clientName}</td>
+                        <td className="py-3 px-2 font-medium">{c.invoiceNumber}</td>
+                        <td className="py-3 px-2">{c.clientName}</td>
                         <td className="py-3 px-2 text-right">
-                          {c.invoice.currency} {Number(c.invoice.balance).toLocaleString()}
+                          {c.currency} {Number(c.amountDue).toLocaleString()}
                         </td>
                         <td className="py-3 px-2 text-center">
                           <Badge className={`${RISK_COLORS[risk]} border-0 text-xs`}>{risk}</Badge>
