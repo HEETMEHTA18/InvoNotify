@@ -152,7 +152,7 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
             notify: { email: false, sms: false, whatsapp: false },
             reference_id: String(invoice.id),
             callback_url: `${appUrl}/api/webhooks/razorpay`,
-            callback_method: "post",
+            callback_method: "get",
           });
           checkoutUrl = link.short_url || null;
 

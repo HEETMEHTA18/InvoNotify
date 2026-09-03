@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
       notify: { email: true, sms: false, whatsapp: false },
       reference_id: String(invoice.id),
       callback_url: `${appUrl}/api/webhooks/razorpay`,
-      callback_method: "post",
+      callback_method: "get",
     });
 
     // Update invoice with Razorpay payment link details
