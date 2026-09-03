@@ -82,6 +82,60 @@ function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
+// GET handler for Razorpay callback_method: "get" redirects
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const paymentId = url.searchParams.get("razorpay_payment_id");
+  const paymentLinkId = url.searchParams.get("razorpay_payment_link_id");
+  const referenceId = url.searchParams.get("razorpay_payment_link_reference_id");
+  const status = url.searchParams.get("razorpay_payment_link_status");
+
+  if (status !== "paid" || !paymentLinkId || !referenceId) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  const invoiceId = parseInt(referenceId, 10);
+  if (isNaN(invoiceId)) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  try {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { id: true, balance: true, status: true },
+    });
+
+    if (!invoice || invoice.status === "Paid") {
+      return NextResponse.redirect(new URL(`/invoice/${invoiceId}`, req.url));
+    }
+
+    if (paymentId) {
+      await settleInvoicePayment({
+        invoiceId,
+        amount: Number(invoice.balance),
+        method: "Razorpay (INR)",
+        date: new Date(),
+        note: "Razorpay payment via callback redirect",
+        transactionId: paymentId,
+        razorpayPaymentId: paymentId,
+      });
+    }
+
+    // Update payment link on invoice
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        razorpayPaymentLinkId: paymentLinkId,
+        razorpayPaymentLinkUrl: url.origin + url.pathname + url.search,
+      },
+    });
+  } catch (error) {
+    console.error("GET webhook handler failed:", error);
+  }
+
+  return NextResponse.redirect(new URL(`/invoice/${invoiceId}?paid=true`, req.url));
+}
+
 export async function POST(req: NextRequest) {
   const webhookSecret = getRazorpayWebhookSecret();
 
