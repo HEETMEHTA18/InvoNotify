@@ -718,7 +718,13 @@ function CreateInvoiceContent() {
         const invoice = await res.json();
         setCreatedInvoiceId(invoice.id);
         setSuccess(true);
-        if (isEditing) toast.success("Invoice updated successfully!");
+        toast.success(`Invoice ${isEditing ? "updated" : "created"} successfully!`);
+        // Redirect to invoice detail page after creation
+        if (!isEditing) {
+          setTimeout(() => {
+            router.push(`/invoice/${invoice.id}`);
+          }, 1500);
+        }
       }
     } catch {
       setError(`Failed to ${isEditing ? "update" : "create"} invoice`);

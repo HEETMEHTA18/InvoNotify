@@ -1,6 +1,18 @@
 "use client";
 
-import { HomeIcon, FileText, Settings, ShoppingBag, Users, Bot } from "lucide-react";
+import {
+  HomeIcon,
+  FileText,
+  Settings,
+  ShoppingBag,
+  Users,
+  Bot,
+  MessageSquare,
+  Brain,
+  CreditCard,
+  CalendarCheck,
+  BarChart3,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -35,6 +47,36 @@ export const dashboardLinks = [
     name: "AI Recovery",
     href: "/dashboard/recovery",
     icon: Bot,
+  },
+  {
+    id: 6,
+    name: "Analytics",
+    href: "/dashboard/recovery/analytics",
+    icon: BarChart3,
+  },
+  {
+    id: 7,
+    name: "Credit Scores",
+    href: "/dashboard/credit-scores",
+    icon: CreditCard,
+  },
+  {
+    id: 8,
+    name: "Promises",
+    href: "/dashboard/promises",
+    icon: CalendarCheck,
+  },
+  {
+    id: 9,
+    name: "Diagnosis",
+    href: "/dashboard/diagnosis",
+    icon: Brain,
+  },
+  {
+    id: 10,
+    name: "WhatsApp",
+    href: "/dashboard/whatsapp",
+    icon: MessageSquare,
   },
   {
     id: 4,
