@@ -88,7 +88,7 @@ export type RazorpayPaymentLink = {
 };
 
 export async function createPaymentLink(input: RazorpayPaymentLinkInput): Promise<RazorpayPaymentLink> {
-  return razorpayRequest<RazorpayPaymentLink>("POST", "/payment-links", {
+  return razorpayRequest<RazorpayPaymentLink>("POST", "/payment_links", {
     amount: Math.round(input.amount * 100), // Razorpay expects paise
     currency: input.currency || "INR",
     description: input.description,
@@ -101,15 +101,15 @@ export async function createPaymentLink(input: RazorpayPaymentLinkInput): Promis
 }
 
 export async function fetchPaymentLink(paymentLinkId: string): Promise<RazorpayPaymentLink> {
-  return razorpayRequest<RazorpayPaymentLink>("GET", `/payment-links/${paymentLinkId}`);
+  return razorpayRequest<RazorpayPaymentLink>("GET", `/payment_links/${paymentLinkId}`);
 }
 
 export async function cancelPaymentLink(paymentLinkId: string): Promise<RazorpayPaymentLink> {
-  return razorpayRequest<RazorpayPaymentLink>("POST", `/payment-links/${paymentLinkId}/cancel`);
+  return razorpayRequest<RazorpayPaymentLink>("POST", `/payment_links/${paymentLinkId}/cancel`);
 }
 
 export async function resendPaymentLink(paymentLinkId: string): Promise<RazorpayPaymentLink> {
-  return razorpayRequest<RazorpayPaymentLink>("POST", `/payment-links/${paymentLinkId}/resend`);
+  return razorpayRequest<RazorpayPaymentLink>("POST", `/payment_links/${paymentLinkId}/resend`);
 }
 
 // ── Payments ─────────────────────────────────────────────────────────────────
