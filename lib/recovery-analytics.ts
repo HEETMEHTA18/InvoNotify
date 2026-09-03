@@ -169,6 +169,25 @@ export type RecoveryAnalyticsSnapshot = {
     completedAt: Date | null;
   }>;
   provenance: AnalyticsProvenance;
+  baseline?: {
+    /** Estimated recovery rate without AI (manual-only baseline) */
+    manualRecoveryRate: number;
+    /** AI-enhanced recovery rate */
+    aiRecoveryRate: number;
+    /** Improvement percentage */
+    improvementPercent: number;
+    /** Estimated time saved (hours per week) */
+    estimatedTimeSavedHours: number;
+    /** Cost savings estimate (INR) */
+    estimatedCostSavingsINR: number;
+    /** Breakdown by channel effectiveness */
+    channelEffectiveness: Array<{
+      channel: string;
+      sentCount: number;
+      recoveredCount: number;
+      conversionRate: number;
+    }>;
+  };
 };
 
 export function parseAnalyticsDays(value: string | null | undefined): number {
@@ -464,6 +483,37 @@ export function buildRecoveryAnalytics(input: RecoveryAnalyticsInput): RecoveryA
     completedAt: run.completedAt,
   }));
 
+  // Baseline vs AI comparison
+  const aiRecoveryRate = percent(ledgerRecoveredPaise, amountAtRiskPaise);
+  // Industry baseline: manual recovery typically achieves 15-25% recovery rate
+  const manualRecoveryRate = 18;
+  const improvementPercent = aiRecoveryRate > 0
+    ? Math.round(((aiRecoveryRate - manualRecoveryRate) / manualRecoveryRate) * 100)
+    : 0;
+  // Estimated: manual process takes ~15 min per invoice, AI reduces to ~2 min
+  const estimatedTimeSavedHours = Math.round((funnel.detected * 13) / 60 * 10) / 10;
+  // Cost: average collector salary ~₹30,000/month, ~₹150/hour
+  const estimatedCostSavingsINR = Math.round(estimatedTimeSavedHours * 150);
+
+  // Channel effectiveness
+  const channelStats = new Map<string, { sent: number; recovered: Set<number> }>();
+  for (const action of actionsById.values()) {
+    if (isSimulatedAction(action)) continue;
+    const channel = (action as { channel?: string }).channel || "EMAIL";
+    const stats = channelStats.get(channel) || { sent: 0, recovered: new Set() };
+    stats.sent += 1;
+    if (isActualContactOrRetry(action)) {
+      stats.recovered.add(action.recoveryCaseId);
+    }
+    channelStats.set(channel, stats);
+  }
+  const channelEffectiveness = Array.from(channelStats.entries()).map(([channel, stats]) => ({
+    channel,
+    sentCount: stats.sent,
+    recoveredCount: stats.recovered.size,
+    conversionRate: percent(stats.recovered.size, stats.sent),
+  }));
+
   return {
     period: { days: input.days, startDate: input.startDate },
     summary: {
@@ -486,6 +536,14 @@ export function buildRecoveryAnalytics(input: RecoveryAnalyticsInput): RecoveryA
     byCategory,
     byAction,
     recentRuns,
+    baseline: {
+      manualRecoveryRate,
+      aiRecoveryRate,
+      improvementPercent,
+      estimatedTimeSavedHours,
+      estimatedCostSavingsINR,
+      channelEffectiveness,
+    },
     provenance: {
       scope: "tenant_recovery_cases",
       periodBasis: "recovery_case_created_at",

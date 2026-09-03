@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { toInputJson } from "@/lib/json";
 import { rateLimitResponse } from "@/lib/ai/rate-limit";
+import { diagnoseFailure, mapToTaxonomyCode } from "@/lib/ai/ml/diagnosis-model";
 import {
   badRequest,
   notFound,
@@ -99,25 +100,83 @@ export async function POST(
 
     const revenueEvent = recoveryCase.revenueEvents[0];
     const failureCode = validated.failureCode ?? revenueEvent?.failureCode ?? "UNKNOWN";
-    const taxonomy = FAILURE_TAXONOMY[failureCode];
     const evidence: Evidence[] = [];
 
-    const canonicalCause = taxonomy?.description ?? "Unknown failure - requires manual review";
-    const category = taxonomy?.category ?? "UNKNOWN";
-    const confidence = taxonomy ? 0.85 : 0.1;
-    const retryable = taxonomy?.retryable ?? false;
-    const actionFamily = taxonomy?.actionFamily ?? "REVIEW_REQUIRED";
-    const reasoning = taxonomy
-      ? "Mapped failure code " + failureCode + " to " + taxonomy.category + ": " + taxonomy.description
-      : "Failure code " + failureCode + " is not in the taxonomy. Manual review is required.";
+    // Gather customer features for ML diagnosis
+    const customer = recoveryCase.invoice.customerRel;
+    const customerHistory = await prisma.invoice.findMany({
+      where: {
+        customerId: recoveryCase.invoice.customerId,
+        ownerUserId: who.userId,
+        status: "Paid",
+      },
+      select: { id: true },
+    });
+    const totalInvoiceCount = customerHistory.length + 1;
+    const paymentSuccessRate = totalInvoiceCount > 0 ? customerHistory.length / totalInvoiceCount : 0.5;
+
+    const failedPayments = await prisma.payment.count({
+      where: {
+        invoiceId: recoveryCase.invoiceId,
+        method: { contains: "FAILED" },
+      },
+    });
+
+    // Run ML diagnosis
+    const mlDiagnosis = diagnoseFailure({
+      failureCode,
+      failureReason: validated.failureReason || null,
+      daysOverdue: recoveryCase.invoice.dueDate
+        ? Math.floor((Date.now() - recoveryCase.invoice.dueDate.getTime()) / (1000 * 60 * 60 * 24))
+        : 0,
+      amountDue: Number(recoveryCase.invoice.balance),
+      paymentSuccessRate,
+      previousFailures: failedPayments,
+      cibilScore: customer?.cibilScore ?? 650,
+      totalInvoiceCount,
+      hasMandate: false,
+      paymentMethod: validated.paymentMethod || null,
+    });
+
+    // Fall back to static taxonomy if ML confidence is low
+    const staticTaxonomy = FAILURE_TAXONOMY[failureCode];
+    const useML = mlDiagnosis.confidence > 0.6;
+    const category = useML ? mlDiagnosis.category : (staticTaxonomy?.category ?? "UNKNOWN");
+    const confidence = useML ? mlDiagnosis.confidence : (staticTaxonomy ? 0.85 : 0.1);
+    const retryable = staticTaxonomy?.retryable ?? (mlDiagnosis.confidence > 0.7);
+    const actionFamily = staticTaxonomy?.actionFamily ?? "REVIEW_REQUIRED";
+    const taxonomyCode = useML ? mapToTaxonomyCode(mlDiagnosis.category) : (staticTaxonomy ? failureCode : null);
+
+    const canonicalCause = useML
+      ? `ML prediction: ${mlDiagnosis.category} (confidence: ${(mlDiagnosis.confidence * 100).toFixed(1)}%)`
+      : staticTaxonomy?.description ?? "Unknown failure - requires manual review";
+
+    const reasoning = useML
+      ? `ML model diagnosed ${mlDiagnosis.category} based on ${mlDiagnosis.contributions.length} features. Top contributors: ${mlDiagnosis.contributions.slice(0, 3).map((c) => `${c.feature}=${c.contribution.toFixed(3)}`).join(", ")}`
+      : staticTaxonomy
+        ? "Mapped failure code " + failureCode + " to " + staticTaxonomy.category + ": " + staticTaxonomy.description
+        : "Failure code " + failureCode + " is not in the taxonomy. Manual review is required.";
 
     evidence.push({
-      source: "failure_code_mapping",
-      rawValue: failureCode,
-      interpretation: taxonomy
-        ? "Direct mapping to " + taxonomy.category + " with action family " + taxonomy.actionFamily
-        : "No matching taxonomy entry - flagged for review",
+      source: useML ? "ml_diagnosis_model" : "failure_code_mapping",
+      rawValue: useML
+        ? { model: "diagnosis-ml-v1", category: mlDiagnosis.category, confidence: mlDiagnosis.confidence, candidates: mlDiagnosis.candidates }
+        : failureCode,
+      interpretation: useML
+        ? `ML model predicted ${mlDiagnosis.category} with ${(mlDiagnosis.confidence * 100).toFixed(1)}% confidence`
+        : staticTaxonomy
+          ? "Direct mapping to " + staticTaxonomy.category + " with action family " + staticTaxonomy.actionFamily
+          : "No matching taxonomy entry - flagged for review",
     });
+
+    // Add ML feature contributions as evidence
+    if (useML && mlDiagnosis.contributions.length > 0) {
+      evidence.push({
+        source: "ml_feature_contributions",
+        rawValue: mlDiagnosis.contributions,
+        interpretation: `Feature importance: ${mlDiagnosis.contributions.slice(0, 5).map((c) => `${c.feature}(${c.contribution > 0 ? "+" : ""}${c.contribution.toFixed(3)})`).join(", ")}`,
+      });
+    }
 
     if (validated.failureReason || validated.paymentMethod || validated.gatewayContext) {
       evidence.push({
@@ -176,21 +235,21 @@ export async function POST(
     }
 
     const diagnosis = await prisma.$transaction(async (tx) => {
-      if (taxonomy) {
+      if (taxonomyCode && staticTaxonomy) {
         await tx.failureTaxonomy.upsert({
           where: { code: failureCode },
           update: {
-            category: taxonomy.category,
-            description: taxonomy.description,
-            retryable: taxonomy.retryable,
-            actionFamily: taxonomy.actionFamily,
+            category: staticTaxonomy.category,
+            description: staticTaxonomy.description,
+            retryable: staticTaxonomy.retryable,
+            actionFamily: staticTaxonomy.actionFamily,
           },
           create: {
             code: failureCode,
-            category: taxonomy.category,
-            description: taxonomy.description,
-            retryable: taxonomy.retryable,
-            actionFamily: taxonomy.actionFamily,
+            category: staticTaxonomy.category,
+            description: staticTaxonomy.description,
+            retryable: staticTaxonomy.retryable,
+            actionFamily: staticTaxonomy.actionFamily,
           },
         });
       }
@@ -198,25 +257,25 @@ export async function POST(
       const savedDiagnosis = await tx.failureDiagnosis.upsert({
         where: { recoveryCaseId: recoveryCase.id },
         update: {
-          taxonomyCode: taxonomy ? failureCode : null,
+          taxonomyCode,
           canonicalCause,
           category,
           confidence,
           reasoning,
           evidence: toInputJson(evidence),
-          status: taxonomy ? "COMPLETED" : "REVIEW_REQUIRED",
-          modelVersion: "v1.0.0",
+          status: confidence >= 0.5 ? "COMPLETED" : "REVIEW_REQUIRED",
+          modelVersion: useML ? "diagnosis-ml-v1" : "v1.0.0",
         },
         create: {
           recoveryCaseId: recoveryCase.id,
-          taxonomyCode: taxonomy ? failureCode : null,
+          taxonomyCode,
           canonicalCause,
           category,
           confidence,
           reasoning,
           evidence: toInputJson(evidence),
-          status: taxonomy ? "COMPLETED" : "REVIEW_REQUIRED",
-          modelVersion: "v1.0.0",
+          status: confidence >= 0.5 ? "COMPLETED" : "REVIEW_REQUIRED",
+          modelVersion: useML ? "diagnosis-ml-v1" : "v1.0.0",
         },
       });
 
@@ -254,6 +313,11 @@ export async function POST(
         reasoning: diagnosis.reasoning,
         evidence: diagnosis.evidence,
         status: diagnosis.status,
+        modelVersion: useML ? "diagnosis-ml-v1" : "v1.0.0",
+        mlPrediction: useML ? {
+          candidates: mlDiagnosis.candidates,
+          contributions: mlDiagnosis.contributions,
+        } : null,
       },
     });
   } catch (error) {
