@@ -11,40 +11,56 @@ import {
   CheckCircle,
   TrendingUp,
   BarChart3,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
-type DiagnosisResult = {
-  caseId: number;
-  invoiceNumber: string;
-  customerName: string;
-  category: string;
-  confidence: number;
-  severity: string;
-  factors: string[];
-  diagnosedAt: string;
+type RecoveryCase = {
+  id: number;
+  invoiceId: number;
+  status: string;
+  stage: string;
+  riskScore: number;
+  expectedRecovery: number;
+  invoice: {
+    invoiceNumber: string;
+    clientName: string;
+    balance: number;
+    currency: string;
+    dueDate: string | null;
+  };
+  actions: Array<{ status: string; actionType: string }>;
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  PAYMENT_FAILURE: "bg-red-100 text-red-800",
-  CHECKOUT_ABANDONMENT: "bg-orange-100 text-orange-800",
-  MANDATE_FAILURE: "bg-yellow-100 text-yellow-800",
-  SUBSCRIPTION_ISSUE: "bg-blue-100 text-blue-800",
-  DISPUTE: "bg-purple-100 text-purple-800",
-  UNKNOWN: "bg-gray-100 text-gray-800",
+const STAGE_COLORS: Record<string, string> = {
+  DETECTED: "bg-gray-100 text-gray-800",
+  DIAGNOSED: "bg-blue-100 text-blue-800",
+  ACTIONED: "bg-yellow-100 text-yellow-800",
+  CONTACTED: "bg-purple-100 text-purple-800",
+  RECOVERED: "bg-green-100 text-green-800",
+  ESCALATED: "bg-red-100 text-red-800",
+  STOPPED: "bg-gray-100 text-gray-500",
 };
 
-const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: "bg-red-100 text-red-800",
-  HIGH: "bg-orange-100 text-orange-800",
-  MEDIUM: "bg-yellow-100 text-yellow-800",
+const RISK_COLORS: Record<string, string> = {
   LOW: "bg-green-100 text-green-800",
+  MEDIUM: "bg-yellow-100 text-yellow-800",
+  HIGH: "bg-orange-100 text-orange-800",
+  CRITICAL: "bg-red-100 text-red-800",
 };
+
+function getRiskLevel(score: number): string {
+  if (score >= 0.85) return "CRITICAL";
+  if (score >= 0.7) return "HIGH";
+  if (score >= 0.4) return "MEDIUM";
+  return "LOW";
+}
 
 export default function DiagnosisPage() {
-  const [cases, setCases] = useState<DiagnosisResult[]>([]);
+  const [cases, setCases] = useState<RecoveryCase[]>([]);
   const [loading, setLoading] = useState(true);
-  const [diagnosing, setDiagnosing] = useState(false);
+  const [sweeping, setSweeping] = useState(false);
 
   useEffect(() => {
     fetchCases();
@@ -55,66 +71,52 @@ export default function DiagnosisPage() {
       const res = await fetch("/api/ai/recovery");
       if (res.ok) {
         const data = await res.json();
-        const caseList = data.cases || [];
-        // Fetch diagnosis for each case
-        const diagnosed = await Promise.all(
-          caseList.slice(0, 30).map(async (c: Record<string, unknown>) => {
-            try {
-              const diagRes = await fetch(
-                `/api/v1/recovery-cases/${c.id}/diagnose`,
-                { method: "POST" }
-              );
-              if (diagRes.ok) {
-                const diag = await diagRes.json();
-                return {
-                  caseId: c.id as number,
-                  invoiceNumber: (c.invoiceNumber as string) || `#${c.id}`,
-                  customerName: (c.customerName as string) || "Unknown",
-                  category: diag.category || "UNKNOWN",
-                  confidence: diag.confidence || 0,
-                  severity: diag.severity || "MEDIUM",
-                  factors: diag.factors || [],
-                  diagnosedAt: new Date().toISOString(),
-                };
-              }
-            } catch {
-              // Skip failed diagnoses
-            }
-            return null;
-          })
-        );
-        setCases(diagnosed.filter(Boolean) as DiagnosisResult[]);
+        setCases(data.cases || []);
       }
     } catch {
-      toast.error("Failed to load cases");
+      toast.error("Failed to load recovery cases");
     } finally {
       setLoading(false);
     }
   }
 
-  async function runBatchDiagnosis() {
-    setDiagnosing(true);
+  async function runSweep() {
+    setSweeping(true);
     try {
-      await fetchCases();
-      toast.success("Batch diagnosis complete");
+      const res = await fetch("/api/ai/recovery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dryRun: true }),
+      });
+      if (res.ok) {
+        toast.success("Recovery sweep completed");
+        fetchCases();
+      }
+    } catch {
+      toast.error("Sweep failed");
     } finally {
-      setDiagnosing(false);
+      setSweeping(false);
     }
   }
 
-  const categoryCounts = cases.reduce(
+  const stageCounts = cases.reduce(
     (acc, c) => {
-      acc[c.category] = (acc[c.category] || 0) + 1;
+      acc[c.stage] = (acc[c.stage] || 0) + 1;
       return acc;
     },
     {} as Record<string, number>
   );
 
-  const avgConfidence = cases.length
-    ? cases.reduce((sum, c) => sum + c.confidence, 0) / cases.length
-    : 0;
+  const riskCounts = cases.reduce(
+    (acc, c) => {
+      const level = getRiskLevel(c.riskScore);
+      acc[level] = (acc[level] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
-  const highSeverity = cases.filter((c) => c.severity === "CRITICAL" || c.severity === "HIGH").length;
+  const totalExpected = cases.reduce((sum, c) => sum + (c.expectedRecovery || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -125,12 +127,16 @@ export default function DiagnosisPage() {
             ML Failure Diagnosis
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            AI-powered failure classification and root cause analysis
+            AI-powered failure classification and risk assessment
           </p>
         </div>
-        <Button onClick={runBatchDiagnosis} disabled={diagnosing}>
-          {diagnosing ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
-          Run Diagnosis
+        <Button onClick={runSweep} disabled={sweeping}>
+          {sweeping ? (
+            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Brain className="h-4 w-4 mr-2" />
+          )}
+          Run AI Sweep
         </Button>
       </div>
 
@@ -144,7 +150,7 @@ export default function DiagnosisPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{cases.length}</p>
-                <p className="text-xs text-gray-500">Diagnosed Cases</p>
+                <p className="text-xs text-gray-500">Total Cases</p>
               </div>
             </div>
           </CardContent>
@@ -156,8 +162,8 @@ export default function DiagnosisPage() {
                 <TrendingUp className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{Math.round(avgConfidence * 100)}%</p>
-                <p className="text-xs text-gray-500">Avg Confidence</p>
+                <p className="text-2xl font-bold">₹{totalExpected.toLocaleString()}</p>
+                <p className="text-xs text-gray-500">Expected Recovery</p>
               </div>
             </div>
           </CardContent>
@@ -169,8 +175,10 @@ export default function DiagnosisPage() {
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{highSeverity}</p>
-                <p className="text-xs text-gray-500">High/Critical Severity</p>
+                <p className="text-2xl font-bold">
+                  {(riskCounts["CRITICAL"] || 0) + (riskCounts["HIGH"] || 0)}
+                </p>
+                <p className="text-xs text-gray-500">High/Critical Risk</p>
               </div>
             </div>
           </CardContent>
@@ -179,47 +187,72 @@ export default function DiagnosisPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <BarChart3 className="h-5 w-5 text-purple-600" />
+                <CheckCircle className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{Object.keys(categoryCounts).length}</p>
-                <p className="text-xs text-gray-500">Failure Categories</p>
+                <p className="text-2xl font-bold">{stageCounts["RECOVERED"] || 0}</p>
+                <p className="text-xs text-gray-500">Recovered</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Category Breakdown */}
+      {/* Risk Distribution */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Failure Categories</CardTitle>
+          <CardTitle className="text-base">Risk Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {Object.entries(categoryCounts).map(([cat, count]) => (
-              <div key={cat} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Badge className={`${CATEGORY_COLORS[cat] || CATEGORY_COLORS.UNKNOWN} border-0`}>
-                  {cat.replace(/_/g, " ")}
-                </Badge>
-                <span className="text-lg font-bold">{count}</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {Object.entries(RISK_COLORS).map(([level, color]) => (
+              <div key={level} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <Badge className={`${color} border-0`}>{level}</Badge>
+                <span className="text-lg font-bold">{riskCounts[level] || 0}</span>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Diagnosis Results Table */}
+      {/* Stage Pipeline */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Diagnosis Results</CardTitle>
+          <CardTitle className="text-base">Recovery Pipeline</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+            {["DETECTED", "DIAGNOSED", "ACTIONED", "CONTACTED", "RECOVERED", "ESCALATED", "STOPPED"].map(
+              (stage, i) => (
+                <div key={stage} className="flex items-center gap-2">
+                  <div className="text-center">
+                    <Badge className={`${STAGE_COLORS[stage]} border-0 mb-1`}>{stage}</Badge>
+                    <p className="text-lg font-bold">{stageCounts[stage] || 0}</p>
+                  </div>
+                  {i < 6 && <ArrowRight className="h-4 w-4 text-gray-300 flex-shrink-0" />}
+                </div>
+              )
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cases Table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Recovery Cases</CardTitle>
+          <Link href="/dashboard/recovery">
+            <Button variant="outline" size="sm">
+              View Full Recovery Dashboard →
+            </Button>
+          </Link>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading and diagnosing cases...</div>
+            <div className="text-center py-8 text-gray-500">Loading cases...</div>
           ) : cases.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              No cases to diagnose. Create recovery cases first.
+              No recovery cases yet. Overdue invoices will automatically create cases.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -228,43 +261,36 @@ export default function DiagnosisPage() {
                   <tr className="border-b">
                     <th className="text-left py-3 px-2 font-medium text-gray-600">Invoice</th>
                     <th className="text-left py-3 px-2 font-medium text-gray-600">Customer</th>
-                    <th className="text-center py-3 px-2 font-medium text-gray-600">Category</th>
-                    <th className="text-center py-3 px-2 font-medium text-gray-600">Confidence</th>
-                    <th className="text-center py-3 px-2 font-medium text-gray-600">Severity</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600">Key Factors</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-600">Balance</th>
+                    <th className="text-center py-3 px-2 font-medium text-gray-600">Risk</th>
+                    <th className="text-center py-3 px-2 font-medium text-gray-600">Stage</th>
+                    <th className="text-center py-3 px-2 font-medium text-gray-600">Expected</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cases.map((c) => (
-                    <tr key={c.caseId} className="border-b last:border-0 hover:bg-gray-50">
-                      <td className="py-3 px-2 font-medium">{c.invoiceNumber}</td>
-                      <td className="py-3 px-2">{c.customerName}</td>
-                      <td className="py-3 px-2 text-center">
-                        <Badge className={`${CATEGORY_COLORS[c.category] || CATEGORY_COLORS.UNKNOWN} border-0 text-xs`}>
-                          {c.category.replace(/_/g, " ")}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <div className="flex items-center gap-2 justify-center">
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="h-2 rounded-full bg-blue-600"
-                              style={{ width: `${c.confidence * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-medium">{Math.round(c.confidence * 100)}%</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <Badge className={`${SEVERITY_COLORS[c.severity] || SEVERITY_COLORS.MEDIUM} border-0 text-xs`}>
-                          {c.severity}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-2 text-xs text-gray-600 max-w-[200px] truncate">
-                        {c.factors?.slice(0, 2).join(", ") || "—"}
-                      </td>
-                    </tr>
-                  ))}
+                  {cases.slice(0, 20).map((c) => {
+                    const risk = getRiskLevel(c.riskScore);
+                    return (
+                      <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="py-3 px-2 font-medium">{c.invoice.invoiceNumber}</td>
+                        <td className="py-3 px-2">{c.invoice.clientName}</td>
+                        <td className="py-3 px-2 text-right">
+                          {c.invoice.currency} {Number(c.invoice.balance).toLocaleString()}
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <Badge className={`${RISK_COLORS[risk]} border-0 text-xs`}>{risk}</Badge>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <Badge className={`${STAGE_COLORS[c.stage] || STAGE_COLORS.DETECTED} border-0 text-xs`}>
+                            {c.stage}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-2 text-right text-green-600 font-medium">
+                          ₹{(c.expectedRecovery || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

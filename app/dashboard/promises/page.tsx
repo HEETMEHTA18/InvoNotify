@@ -11,49 +11,42 @@ import {
   AlertTriangle,
   RefreshCw,
   Send,
-  ArrowRight,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 
-type Promise = {
-  id: string;
-  caseId: number;
-  invoiceNumber: string;
-  customerName: string;
-  amount: number;
-  currency: string;
-  promisedDate: string;
-  status: "PENDING" | "FULFILLED" | "MISSED" | "PARTIAL";
-  source: string;
-  createdAt: string;
+type PromiseSummary = {
+  total: number;
+  active: number;
+  missed: number;
+  fulfilled: number;
 };
 
-const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType }> = {
-  PENDING: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  FULFILLED: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-  MISSED: { color: "bg-red-100 text-red-800", icon: AlertTriangle },
-  PARTIAL: { color: "bg-blue-100 text-blue-800", icon: ArrowRight },
+type ReminderSummary = {
+  total: number;
+  sent: number;
 };
 
 export default function PromisesPage() {
-  const [promises, setPromises] = useState<Promise[]>([]);
+  const [summary, setSummary] = useState<PromiseSummary | null>(null);
+  const [reminders, setReminders] = useState<ReminderSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [reminderResult, setReminderResult] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    fetchPromises();
+    fetchSummary();
   }, []);
 
-  async function fetchPromises() {
+  async function fetchSummary() {
     try {
       const res = await fetch("/api/v1/promises/reminders");
       if (res.ok) {
         const data = await res.json();
-        setPromises(data.promises || []);
+        setSummary(data.promises);
+        setReminders(data.reminders);
       }
     } catch {
-      toast.error("Failed to load promises");
+      toast.error("Failed to load promise data");
     } finally {
       setLoading(false);
     }
@@ -62,12 +55,17 @@ export default function PromisesPage() {
   async function processReminders() {
     setProcessing(true);
     try {
-      const res = await fetch("/api/v1/promises/reminders", { method: "POST" });
+      const res = await fetch("/api/v1/promises/reminders", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || ""}`,
+        },
+      });
       if (res.ok) {
-        const data = await res.json();
-        setReminderResult(data);
-        toast.success(`Processed ${data.sent || 0} reminders`);
-        fetchPromises();
+        toast.success("Reminders processed successfully");
+        fetchSummary();
+      } else {
+        toast.error("Failed to process reminders");
       }
     } catch {
       toast.error("Failed to process reminders");
@@ -75,11 +73,6 @@ export default function PromisesPage() {
       setProcessing(false);
     }
   }
-
-  const pending = promises.filter((p) => p.status === "PENDING");
-  const fulfilled = promises.filter((p) => p.status === "FULFILLED");
-  const missed = promises.filter((p) => p.status === "MISSED");
-  const totalAmount = promises.reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -94,8 +87,12 @@ export default function PromisesPage() {
           </p>
         </div>
         <Button onClick={processReminders} disabled={processing}>
-          {processing ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-          Send Reminders
+          {processing ? (
+            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Send className="h-4 w-4 mr-2" />
+          )}
+          Process Reminders
         </Button>
       </div>
 
@@ -104,12 +101,25 @@ export default function PromisesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <CalendarCheck className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{loading ? "—" : summary?.total ?? 0}</p>
+                <p className="text-xs text-gray-500">Total Promises</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
               <div className="p-2 bg-yellow-100 rounded-lg">
                 <Clock className="h-5 w-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{pending.length}</p>
-                <p className="text-xs text-gray-500">Pending</p>
+                <p className="text-2xl font-bold">{loading ? "—" : summary?.active ?? 0}</p>
+                <p className="text-xs text-gray-500">Active (Pending)</p>
               </div>
             </div>
           </CardContent>
@@ -121,7 +131,7 @@ export default function PromisesPage() {
                 <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{fulfilled.length}</p>
+                <p className="text-2xl font-bold">{loading ? "—" : summary?.fulfilled ?? 0}</p>
                 <p className="text-xs text-gray-500">Fulfilled</p>
               </div>
             </div>
@@ -134,92 +144,73 @@ export default function PromisesPage() {
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{missed.length}</p>
+                <p className="text-2xl font-bold">{loading ? "—" : summary?.missed ?? 0}</p>
                 <p className="text-xs text-gray-500">Missed</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <CalendarCheck className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">₹{totalAmount.toLocaleString()}</p>
-                <p className="text-xs text-gray-500">Total Promised</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Reminder Result */}
-      {reminderResult && (
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="p-4">
-            <p className="text-sm text-green-800">
-              <strong>Last Reminder Batch:</strong>{" "}
-              {(reminderResult?.sent as number) || 0} reminders sent, {(reminderResult?.skipped as number) || 0} skipped
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Promise List */}
+      {/* Reminder Stats */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">All Promises</CardTitle>
+          <CardTitle className="text-base">Reminder Statistics</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading promises...</div>
-          ) : promises.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No payment promises yet. Promises are created when customers commit to a payment date.
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Send className="h-4 w-4 text-blue-600" />
+                <span className="font-medium">Reminders Sent</span>
+              </div>
+              <p className="text-3xl font-bold">{loading ? "—" : reminders?.sent ?? 0}</p>
+              <p className="text-xs text-gray-500 mt-1">of {reminders?.total ?? 0} total</p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium text-gray-600">Invoice</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600">Customer</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600">Amount</th>
-                    <th className="text-center py-3 px-2 font-medium text-gray-600">Promised Date</th>
-                    <th className="text-center py-3 px-2 font-medium text-gray-600">Status</th>
-                    <th className="text-center py-3 px-2 font-medium text-gray-600">Source</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {promises.map((p) => {
-                    const config = STATUS_CONFIG[p.status] || STATUS_CONFIG.PENDING;
-                    const Icon = config.icon;
-                    return (
-                      <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
-                        <td className="py-3 px-2 font-medium">{p.invoiceNumber || `#${p.caseId}`}</td>
-                        <td className="py-3 px-2">{p.customerName}</td>
-                        <td className="py-3 px-2 text-right font-medium">
-                          {p.currency} {p.amount.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          {new Date(p.promisedDate).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <Badge className={`${config.color} border-0 flex items-center gap-1 w-fit mx-auto`}>
-                            <Icon className="h-3 w-3" />
-                            {p.status}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-2 text-center text-xs text-gray-500">{p.source}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                <span className="font-medium">Fulfillment Rate</span>
+              </div>
+              <p className="text-3xl font-bold">
+                {loading
+                  ? "—"
+                  : summary?.total
+                  ? `${Math.round(((summary?.fulfilled ?? 0) / summary.total) * 100)}%`
+                  : "—"}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">promises kept</p>
             </div>
-          )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* How It Works */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">How Promise-to-Pay Works</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-medium text-blue-900 mb-2">1. Customer Commits</h3>
+              <p className="text-sm text-blue-700">
+                During recovery, customers can promise to pay by a specific date. The system records the promise.
+              </p>
+            </div>
+            <div className="p-4 bg-yellow-50 rounded-lg">
+              <h3 className="font-medium text-yellow-900 mb-2">2. Automated Reminders</h3>
+              <p className="text-sm text-yellow-700">
+                The system sends reminders at 24h before, morning of, and 24h after the promised date via email + WhatsApp.
+              </p>
+            </div>
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h3 className="font-medium text-green-900 mb-2">3. Auto-Reconciliation</h3>
+              <p className="text-sm text-green-700">
+                When payment arrives, the promise is automatically marked as fulfilled. Missed promises escalate to human.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
