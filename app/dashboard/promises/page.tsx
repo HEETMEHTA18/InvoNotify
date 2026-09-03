@@ -57,15 +57,13 @@ export default function PromisesPage() {
     try {
       const res = await fetch("/api/v1/promises/reminders", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || ""}`,
-        },
       });
       if (res.ok) {
         toast.success("Reminders processed successfully");
         fetchSummary();
       } else {
-        toast.error("Failed to process reminders");
+        const err = await res.json();
+        toast.error(err.error || "Failed to process reminders");
       }
     } catch {
       toast.error("Failed to process reminders");

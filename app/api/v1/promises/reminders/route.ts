@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processPromiseReminders, processMissedPromises } from "@/lib/ai/promise-reminder";
+import { auth } from "@/lib/auth";
 
 /**
  * POST /api/v1/promises/reminders
@@ -14,12 +15,18 @@ export async function POST(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   const reminderSecret = process.env.REMINDER_CRON_SECRET;
 
-  const isValid =
+  const isCronAuth =
     authHeader === `Bearer ${cronSecret}` ||
     authHeader === `Bearer ${reminderSecret}`;
 
-  if (!isValid) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Also allow logged-in users
+  let userId: string | null = null;
+  if (!isCronAuth) {
+    const session = await auth();
+    userId = session?.user?.id ?? null;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   try {
