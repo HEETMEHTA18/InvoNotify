@@ -162,17 +162,25 @@ function InvoiceDetailContent() {
         if (!invoice) return;
         setPayLoading(true);
         try {
-            const res = await fetch('/api/stripe/checkout', {
+            const res = await fetch('/api/razorpay/payment-links', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ invoiceId: invoice.id }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || 'Failed to create checkout session');
-            if (data?.url) {
-                window.location.href = data.url;
+
+            if (res.status === 409 && data?.paymentLinkUrl) {
+                window.location.href = data.paymentLinkUrl;
+                return;
+            }
+
+            if (!res.ok) throw new Error(data?.error || 'Failed to create payment link');
+
+            const paymentUrl = data?.shortUrl || data?.paymentLinkUrl;
+            if (paymentUrl) {
+                window.location.href = paymentUrl;
             } else {
-                throw new Error('No checkout url returned');
+                throw new Error('No payment link URL returned');
             }
         } catch (err) {
             console.error(err);
