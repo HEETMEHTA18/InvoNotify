@@ -6,7 +6,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import QRCode from "qrcode";
 import { buildPaymentPayload, isValidPaymentPayload } from "@/lib/payment-qr";
 import { getFallbackQrPayloadFromCodebase } from "@/lib/bank-qr-fallback";
-import { createStripeCheckoutUrl } from "@/lib/stripe";
+import { createPaymentLink } from "@/lib/razorpay";
 import {
   ReminderChannel,
   ReminderType,
@@ -131,15 +131,42 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
     }
 
     try {
-      const checkoutUrl = await createStripeCheckoutUrl({
-        invoiceId: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        amountDue: Number(invoice.balance ?? invoice.total ?? 0),
-        currency: invoice.currency,
-        clientEmail: invoice.clientEmail,
-        clientName: invoice.clientName,
-        ownerUserId: actingUserId,
-      });
+      const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      let checkoutUrl: string | null = null;
+
+      if (invoice.razorpayPaymentLinkUrl) {
+        checkoutUrl = invoice.razorpayPaymentLinkUrl;
+      } else if (invoice.razorpayPaymentLinkId) {
+        checkoutUrl = null;
+      } else {
+        try {
+          const link = await createPaymentLink({
+            amount: Math.round(Number(invoice.balance)),
+            currency: invoice.currency || "INR",
+            description: `Payment for Invoice ${invoice.invoiceNumber || `#${invoice.id}`}`,
+            customer: {
+              name: invoice.clientName || undefined,
+              email: invoice.clientEmail || undefined,
+              contact: invoice.clientPhone || undefined,
+            },
+            notify: { email: false, sms: false, whatsapp: false },
+            reference_id: String(invoice.id),
+            callback_url: `${appUrl}/api/webhooks/razorpay`,
+            callback_method: "post",
+          });
+          checkoutUrl = link.short_url || null;
+
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              razorpayPaymentLinkId: link.id,
+              razorpayPaymentLinkUrl: link.short_url || null,
+            },
+          });
+        } catch (linkError) {
+          console.error("Failed to create Razorpay payment link for reminder:", linkError);
+        }
+      }
 
       if (checkoutUrl) {
         body = getInvoiceReminderTemplate({
