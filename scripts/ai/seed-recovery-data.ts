@@ -68,17 +68,17 @@ type Profile = {
 };
 
 const PROFILES: Profile[] = [
-  { name: "Acme Traders",        email: "acme@example.com",    phone: "+919000000001", city: "Ahmedabad", state: "Gujarat",     cibil: 720, late: 2, history: 8 },
-  { name: "Beta Industries",     email: "beta@example.com",    phone: "+919000000002", city: "Pune",      state: "Maharashtra", cibil: 580, late: 6, history: 8 },
-  { name: "Gamma Retail",        email: "gamma@example.com",   phone: "+919000000003", city: "Surat",     state: "Gujarat",     cibil: 810, late: 0, history: 8 },
-  { name: "Delta Logistics",     email: "delta@example.com",   phone: "+919000000004", city: "Chennai",   state: "Tamil Nadu",  cibil: 620, late: 4, history: 8 },
-  { name: "Epsilon Foods",       email: "epsilon@example.com", phone: "+919000000005", city: "Indore",    state: "MP",          cibil: 700, late: 3, history: 8 },
+  { name: "Acme Traders",        email: "heetmehta18125@gmail.com",    phone: "+919000000001", city: "Ahmedabad", state: "Gujarat",     cibil: 720, late: 2, history: 8 },
+  { name: "Beta Industries",     email: "heetpersonal1812@gmail.com",  phone: "+919000000002", city: "Pune",      state: "Maharashtra", cibil: 580, late: 6, history: 8 },
+  { name: "Gamma Retail",        email: "heetmehta18125@gmail.com",    phone: "+919000000003", city: "Surat",     state: "Gujarat",     cibil: 810, late: 0, history: 8 },
+  { name: "Delta Logistics",     email: "heetpersonal1812@gmail.com",  phone: "+919000000004", city: "Chennai",   state: "Tamil Nadu",  cibil: 620, late: 4, history: 8 },
+  { name: "Epsilon Foods",       email: "heetmehta18125@gmail.com",    phone: "+919000000005", city: "Indore",    state: "MP",          cibil: 700, late: 3, history: 8 },
   // Opted out of all communication -> every contact action must be BLOCKED.
-  { name: "Zeta Pharma",         email: "zeta@example.com",    phone: "+919000000006", city: "Hyderabad", state: "Telangana",   cibil: 690, late: 3, history: 6, optOut: true },
+  { name: "Zeta Pharma",         email: "heetpersonal1812@gmail.com",  phone: "+919000000006", city: "Hyderabad", state: "Telangana",   cibil: 690, late: 3, history: 6, optOut: true },
   // VIP: large balances, handled by a human rather than auto-chased.
-  { name: "Omega Constructions", email: "omega@example.com",   phone: "+919000000007", city: "Mumbai",    state: "Maharashtra", cibil: 750, late: 1, history: 6, vip: true },
-  { name: "Kappa Textiles",      email: "kappa@example.com",   phone: "+919000000008", city: "Ludhiana",  state: "Punjab",      cibil: 660, late: 3, history: 6 },
-  { name: "Sigma Electronics",   email: "sigma@example.com",   phone: "+919000000009", city: "Noida",     state: "UP",          cibil: 540, late: 7, history: 8 },
+  { name: "Omega Constructions", email: "heetmehta18125@gmail.com",    phone: "+919000000007", city: "Mumbai",    state: "Maharashtra", cibil: 750, late: 1, history: 6, vip: true },
+  { name: "Kappa Textiles",      email: "heetpersonal1812@gmail.com",  phone: "+919000000008", city: "Ludhiana",  state: "Punjab",      cibil: 660, late: 3, history: 6 },
+  { name: "Sigma Electronics",   email: "heetmehta18125@gmail.com",    phone: "+919000000009", city: "Noida",     state: "UP",          cibil: 540, late: 7, history: 8 },
 ];
 
 type InvoiceSpec = {
