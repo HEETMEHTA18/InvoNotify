@@ -6,7 +6,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import QRCode from "qrcode";
 import { buildPaymentPayload, isValidPaymentPayload } from "@/lib/payment-qr";
 import { getFallbackQrPayloadFromCodebase } from "@/lib/bank-qr-fallback";
-import { createPaymentLink } from "@/lib/razorpay";
+import { createPaymentLink, fetchPaymentLink } from "@/lib/razorpay";
 import { isWhatsAppConfigured, sendWhatsAppPaymentReminder } from "@/lib/whatsapp";
 import {
   ReminderChannel,
@@ -143,8 +143,25 @@ export async function sendInvoiceReminderById(params: SendReminderParams): Promi
       if (invoice.razorpayPaymentLinkUrl) {
         checkoutUrl = invoice.razorpayPaymentLinkUrl;
       } else if (invoice.razorpayPaymentLinkId) {
-        checkoutUrl = null;
-      } else {
+        // Payment link exists but URL is missing — fetch it from Razorpay
+        try {
+          const existingLink = await fetchPaymentLink(invoice.razorpayPaymentLinkId);
+          if (existingLink.short_url) {
+            checkoutUrl = existingLink.short_url;
+            // Cache the URL back to the invoice for future emails
+            await prisma.invoice.update({
+              where: { id: invoice.id },
+              data: { razorpayPaymentLinkUrl: existingLink.short_url },
+            });
+          }
+        } catch (fetchError) {
+          console.error("Failed to fetch existing Razorpay payment link:", fetchError);
+          // Fall through to create a new link
+        }
+      }
+
+      // Create a new payment link if we still don't have one
+      if (!checkoutUrl) {
         try {
           const link = await createPaymentLink({
             amount: Math.round(Number(invoice.balance)),

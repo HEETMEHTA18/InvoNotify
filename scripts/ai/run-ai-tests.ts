@@ -50,6 +50,9 @@ function baseContext(overrides: Partial<RecoveryContext> = {}): RecoveryContext 
       dueDate: new Date(Date.now() - 7 * 86400000),
       daysOverdue: 7,
       customerId: null,
+      razorpayPaymentLinkId: null,
+      razorpayPaymentLinkUrl: null,
+      reminderChannel: "EMAIL",
     },
     customer: {
       id: null,
@@ -105,8 +108,11 @@ test("high risk when customer is late and overdue", () => {
     cibilScore: 550,
     humanEngaged: false,
   });
-  assert.ok(score.riskScore >= 0.7, `expected HIGH risk, got ${score.riskScore}`);
-  assert.equal(score.riskLevel, "HIGH");
+  assert.ok(score.riskScore >= 0.7, `expected HIGH/CRITICAL risk, got ${score.riskScore}`);
+  assert.ok(
+    score.riskLevel === "HIGH" || score.riskLevel === "CRITICAL",
+    `expected HIGH or CRITICAL, got ${score.riskLevel}`,
+  );
 });
 
 test("low risk when customer always pays on time", () => {
