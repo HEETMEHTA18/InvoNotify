@@ -6,6 +6,9 @@ import { rateLimitResponse, getRateLimitHeaders } from "@/lib/ai/rate-limit";
 import { createLogger } from "@/lib/ai/logger";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const CRON_SWEEP_BATCH_SIZE = 10;
 
 const log = createLogger("api:recovery");
 
@@ -97,7 +100,7 @@ export async function GET(req: NextRequest) {
   if (isCronAuthorized(req)) {
     try {
       log.info("Recovery sweep triggered", { userId: null, trigger: "CRON" });
-      const result = await runRecoverySweep({ trigger: "CRON" });
+      const result = await runRecoverySweep({ trigger: "CRON", limit: CRON_SWEEP_BATCH_SIZE });
       log.info("Autonomous recovery sweep completed", {
         runId: result.runId,
         actions: result.actions,
@@ -205,7 +208,7 @@ export async function POST(req: NextRequest) {
   if (isCronAuthorized(req)) {
     try {
       log.info("Recovery sweep triggered", { userId: null, trigger: "CRON" });
-      const result = await runRecoverySweep({ trigger: "CRON" });
+      const result = await runRecoverySweep({ trigger: "CRON", limit: CRON_SWEEP_BATCH_SIZE });
       log.info("Autonomous recovery sweep completed", {
         runId: result.runId,
         actions: result.actions,

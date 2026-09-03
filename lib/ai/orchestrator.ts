@@ -34,6 +34,8 @@ export type SweepOptions = {
   /** Persist recommendations and audit evidence without contacting a provider or customer. */
   dryRun?: boolean;
   now?: Date;
+  /** Max invoices to process in this sweep. CRON sweeps should use a small batch to stay within function timeout. */
+  limit?: number;
 };
 
 export type SweepInvoiceResult = {
@@ -63,8 +65,8 @@ export type SweepResult = {
   invoiceResults: SweepInvoiceResult[];
 };
 
-function getOwnedInvoices(args: { userId?: string; invoiceId?: number; now: Date }) {
-  const { userId, invoiceId, now } = args;
+function getOwnedInvoices(args: { userId?: string; invoiceId?: number; now: Date; limit?: number }) {
+  const { userId, invoiceId, now, limit } = args;
 
   return prisma.invoice.findMany({
     where: {
@@ -92,7 +94,7 @@ function getOwnedInvoices(args: { userId?: string; invoiceId?: number; now: Date
       userId: true,
     },
     orderBy: [{ dueDate: "asc" }],
-    take: 500,
+    take: limit ?? 500,
   });
 }
 
@@ -110,6 +112,7 @@ export async function runRecoverySweep(options: SweepOptions = {}): Promise<Swee
     userId: options.userId,
     invoiceId: options.invoiceId,
     now,
+    limit: options.limit,
   });
 
   // Learning loop: fetch strategy effectiveness once per sweep so every
