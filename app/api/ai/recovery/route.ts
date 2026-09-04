@@ -8,7 +8,7 @@ import { createLogger } from "@/lib/ai/logger";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const CRON_SWEEP_BATCH_SIZE = 10;
+const CRON_SWEEP_BATCH_SIZE = 3;
 
 const log = createLogger("api:recovery");
 

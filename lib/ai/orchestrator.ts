@@ -108,6 +108,10 @@ export async function runRecoverySweep(options: SweepOptions = {}): Promise<Swee
   const now = options.now || new Date();
   const trigger = options.trigger || "MANUAL";
 
+  // Timeout guard: CRON sweeps must finish within 50 seconds (Vercel limit is 60s)
+  const startTime = Date.now();
+  const SWEEP_TIMEOUT_MS = trigger === "CRON" ? 50_000 : 120_000;
+
   const invoices = await getOwnedInvoices({
     userId: options.userId,
     invoiceId: options.invoiceId,
@@ -144,6 +148,16 @@ export async function runRecoverySweep(options: SweepOptions = {}): Promise<Swee
   let simulatedActionCount = 0;
 
   for (const invoice of invoices) {
+    // Timeout guard: stop processing if we're running out of time
+    if (Date.now() - startTime > SWEEP_TIMEOUT_MS) {
+      log.warn("Sweep timeout reached, stopping early", {
+        processed: invoiceResults.length,
+        remaining: invoices.length - invoiceResults.length,
+        elapsed: Date.now() - startTime,
+      });
+      break;
+    }
+
     try {
       const result = await processInvoice(invoice.id, run.id, {
         trigger,
