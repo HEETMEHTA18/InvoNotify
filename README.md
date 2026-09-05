@@ -1,526 +1,392 @@
-# InvoiceFlow - Advanced B2B Invoice Management
+# InvoNotify — AI-Powered Invoice Revenue Recovery
 
-A full-stack invoice management system for creating invoices, tracking payments, running analytics, and automating reminders across email/SMS/voice channels.
+> **[Architecture & System Design →](proposed.md)**
+
+An AI-powered invoice recovery platform that automatically detects overdue invoices, assesses risk using machine learning, and executes multi-channel recovery actions via Razorpay payment links.
+
+**Live Demo:** [invonotify.vercel.app](https://invonotify.vercel.app)
+
+---
 
 ## Table of Contents
 
-1. Overview
-2. Key Features
-3. Architecture at a Glance
-4. Tech Stack
-5. Project Structure
-6. Prerequisites
-7. Environment Variables
-8. Local Setup
-9. Database Setup and Migrations
-10. Running the App
-11. Reminder Automation (Local and Cloud)
-12. API Surface
-13. Security Model
-14. Performance Guidelines
-15. Troubleshooting
-16. Documentation Map
-17. License
+1. [Overview](#overview)
+2. [Key Features](#key-features)
+3. [Quick Start](#quick-start)
+4. [Architecture](#architecture)
+5. [Tech Stack](#tech-stack)
+6. [Environment Variables](#environment-variables)
+7. [Demo Setup](#demo-setup)
+8. [AI Recovery System](#ai-recovery-system)
+9. [Dashboard Pages](#dashboard-pages)
+10. [API Reference](#api-reference)
+11. [Razorpay Integration](#razorpay-integration)
+12. [Testing](#testing)
+13. [Deployment](#deployment)
+14. [License](#license)
 
-## 1. Overview
+---
 
-- Frontend: Next.js App Router pages and client components.
-- Backend: Next.js route handlers under `app/api/**/route.ts`.
-- Data: PostgreSQL via Prisma ORM.
-- Auth: NextAuth v5 with Google OAuth and Credentials.
-- Automation: daily reminder sweep via Vercel Cron or Windows Task Scheduler.
+## Overview
 
-This repository already contains backend functionality. A separate backend service is not required for normal scaling at current scope.
+InvoNotify solves the ₹50,000 crore problem of unpaid B2B invoices. Instead of manual collection teams chasing payments, an AI agent autonomously:
 
-## 2. Key Features
+1. **Detects** overdue invoices
+2. **Scores** risk using ML (11 features)
+3. **Decides** the best action and channel
+4. **Executes** via email, WhatsApp, or Razorpay payment links
+5. **Learns** from outcomes to improve
 
-- Professional invoice create/read/update/delete lifecycle.
-- PDF invoice generation and mail delivery.
-- Automated reminders with idempotent reminder logs.
-- Multi-channel delivery support (email, SMS, voice, Telegram mirror).
-- Dashboard analytics for KPIs, revenue trend, and risk insights.
-- Bulk imports for invoices and customers (YAML/Tally-oriented flows).
-- **P0: AI Revenue Recovery** — risk scoring, bounded action selection,
-  Razorpay Test Mode Payment Links, stopping rules, approval gates, audit trail
-  and recovery analytics. See [`PRD.md`](PRD.md) and
-  [`docs/RAZORPAY_HACKATHON_TODO.md`](docs/RAZORPAY_HACKATHON_TODO.md).
+**Demo Credentials:**
+- Email: `razorpay@invo-notify.test`
+- Password: `razorpay`
 
-## 3. Architecture at a Glance
+---
 
-```mermaid
-flowchart LR
-	U[User Browser] --> FE[Next.js Frontend\napp/**/page.tsx]
-	FE --> API[Next.js Backend APIs\napp/api/**/route.ts]
-	API --> AUTH[NextAuth\nlib/auth.ts]
-	API --> PRISMA[Prisma Client\nlib/db.ts]
-	PRISMA --> DB[(PostgreSQL)]
-	API --> CH[Email / SMS / Voice / Telegram]
-	CRON[Vercel Cron or Task Scheduler] --> RA[/api/reminders/auto]
-```
+## Key Features
 
-### 3.1 Authentication and Authorization Flow
+### AI Recovery Engine
+- ML risk scoring with 11 weighted features
+- LLM-powered decision agent (GPT-4o-mini)
+- 9 policy guardrails (no harassment, opt-outs, business hours)
+- Explainable decisions with feature contributions
 
-```mermaid
-sequenceDiagram
-	autonumber
-	participant U as User Browser
-	participant L as Login/Register UI
-	participant N as NextAuth API
-	participant P as Provider/DB Check
-	participant S as Session/JWT
-	participant A as Protected API Route
-	participant DB as PostgreSQL
+### Multi-Channel Notifications
+- **Email** — Gmail SMTP with branded templates
+- **WhatsApp** — Meta Cloud API (free within 24h window)
+- **Razorpay Payment Links** — One-click checkout
 
-	U->>L: Submit credentials or OAuth sign-in
-	L->>N: POST /api/auth/[...nextauth]
-	N->>P: Validate with Google or Credentials
-	P-->>N: User verified
-	N->>S: Create session token (JWT)
-	S-->>U: Session cookie/token returned
+### Customer Intelligence
+- CIBIL credit score integration
+- Payment history analysis
+- Promise-to-pay tracking
+- Automated reminder scheduling
 
-	U->>A: Request protected endpoint
-	A->>N: auth() session check
-	alt authorized
-		N-->>A: userId
-		A->>DB: Query only user data
-		DB-->>A: records
-		A-->>U: 200 + JSON
-	else unauthorized
-		N-->>A: no valid session
-		A-->>U: 401 Unauthorized
-	end
-```
+### Dashboard & Analytics
+- Real-time recovery funnel
+- Baseline vs AI comparison (85% vs 18%)
+- Strategy effectiveness tracking
+- Full audit trail
 
-### 3.2 Invoice List Request Flow
+---
 
-```mermaid
-sequenceDiagram
-	autonumber
-	participant U as User Browser
-	participant P as Dashboard Invoices Page
-	participant A as /api/invoices
-	participant AU as NextAuth (auth())
-	participant PR as Prisma Client
-	participant DB as PostgreSQL
-
-	U->>P: Open Invoices page
-	P->>A: GET /api/invoices?withItems=false
-	A->>AU: Validate session
-	AU-->>A: userId
-	A->>PR: invoice.findMany(where: userId)
-	PR->>DB: SQL query
-	DB-->>PR: invoice rows
-	PR-->>A: mapped records
-	A-->>P: JSON response
-	P-->>U: Render invoice list + stats
-```
-
-### 3.3 Automated Reminder Flow
-
-```mermaid
-sequenceDiagram
-	autonumber
-	participant C as Cron (Vercel/Local Script)
-	participant R as /api/reminders/auto
-	participant PR as Prisma Client
-	participant DB as PostgreSQL
-	participant S as Reminder Service
-	participant E as Email/SMS/Voice Providers
-
-	C->>R: POST /api/reminders/auto (secret)
-	R->>R: Authorize cron secret
-	R->>PR: find eligible unpaid invoices
-	PR->>DB: Query invoices + customer flags
-	DB-->>PR: due invoices
-
-	loop each eligible invoice
-		R->>S: getReminderMatchForDate + sendInvoiceReminderById
-		S->>E: Send via configured channel(s)
-		E-->>S: delivery result
-		alt sent successfully
-			R->>PR: create InvoiceReminderLog
-			PR->>DB: INSERT reminder log
-		else failed/skipped
-			R->>R: count failure/skip
-		end
-	end
-
-	R-->>C: summary JSON (sent/skipped/failed)
-```
-
-### 3.4 Deployment and Scheduling Flow
-
-```mermaid
-flowchart LR
-	subgraph Cloud[Cloud Runtime]
-		V[Vercel Deployment]
-		VC[Vercel Cron\n30 13 * * *]
-		AR[/api/reminders/auto]
-	end
-
-	subgraph Local[Local Runtime]
-		TS[Windows Task Scheduler]
-		BAT[scripts/automation/run-reminders.bat]
-		JS[scripts/automation/run-reminders.js]
-		ARL[/api/reminders/auto]
-	end
-
-	DB[(PostgreSQL)]
-	CH[Email/SMS/Voice Channels]
-
-	VC --> AR
-	TS --> BAT --> JS --> ARL
-	AR --> DB
-	ARL --> DB
-	AR --> CH
-	ARL --> CH
-```
-
-For full diagrams, see `Documentation/architecture/system-architecture-diagrams.md`.
-For complete architecture narrative, see `Documentation/architecture/system-architecture.md`.
-
-## 4. Tech Stack
-
-- Framework: Next.js 16.x (App Router)
-- Runtime: Node.js
-- UI: React 19, Tailwind CSS, Radix/Shadcn components
-- Data: Prisma 5 + PostgreSQL
-- Authentication: next-auth v5
-- Notifications: Gmail API/SMTP, Telegram, (SMS/Voice Coming Soon)
-- Charts and reporting: Recharts
-
-## 5. Project Structure
-
-```text
-app/                 Next.js pages and API routes
-app/api/             Backend route handlers
-app/dashboard/       Dashboard routes, layout, and page shells
-app/docs/            Documentation routes
-app/landing/         Landing page route
-components/          Shared UI components and feature bundles
-components/dashboard/ Dashboard shell, stats, charts, sidebar, and user menu
-components/docs/     Docs sidebar and markdown renderer
-components/landing/  Landing page sections and reusable blocks
-components/ui/       Base design-system primitives
-lib/                 Auth, DB, reminders, messaging, PDF, helpers
-prisma/              Schema and migrations
-scripts/             Operational scripts grouped by purpose
-scripts/automation/  Reminder trigger and scheduling launchers
-scripts/maintenance/ Database and tenancy maintenance scripts
-scripts/integration/ External provider integration test utilities
-logs/                Runtime logs (local reminder scheduler)
-data/                Bulk import sample files
-Documentation/      Additional project docs (SRS, etc.)
-```
-
-## 6. Prerequisites
-
-- Node.js 20.9+
-- pnpm 9.x
-- PostgreSQL database
-- Optional provider accounts: Google, Twilio, Telegram, VAPI
-
-## 7. Environment Variables
-
-Create `.env` in repository root.
-
-### Core
-
-```env
-DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<db>?schema=public"
-DIRECT_URL="postgresql://<user>:<password>@<host>:<port>/<db>?schema=public"
-AUTH_SECRET="replace-with-strong-random-secret"
-SITE_URL="http://localhost:3000"
-```
-
-### Authentication
-
-```env
-GOOGLE_CLIENT_ID="..."
-GOOGLE_CLIENT_SECRET="..."
-```
-
-### Email (choose according to current integration path)
-
-```env
-GMAIL_USER="your-email@gmail.com"
-GMAIL_APP_PASSWORD="your-app-password"
-```
-
-### SMS
-
-```env
-TWILIO_ACCOUNT_SID="..."
-TWILIO_AUTH_TOKEN="..."
-TWILIO_PHONE_NUMBER="+1..."
-```
-
-### Telegram (optional mirror notifications)
-
-```env
-TELEGRAM_BOT_TOKEN="..."
-TELEGRAM_CHAT_ID="..."
-```
-
-### Stripe payments
-
-```env
-STRIPE_SECRET_KEY="sk_test_..."
-STRIPE_WEBHOOK_SECRET="whsec_..."
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-APP_URL="http://localhost:3000"
-```
-
-Webhook URL for Vercel:
-
-```text
-https://invonotify.vercel.app/api/stripe/webhook
-```
-
-For local testing, use the Stripe CLI:
+## Quick Start
 
 ```bash
-stripe listen --forward-to localhost:3000/api/stripe/webhook
+# Clone and install
+git clone https://github.com/HEETMEHTA18/InvoNotify.git
+cd InvoNotify
+pnpm install
+
+# Setup database
+npx prisma generate
+npx prisma migrate deploy
+
+# Seed demo data
+pnpm ai:seed
+
+# Start dev server
+pnpm dev
 ```
 
-### Razorpay AI Recovery (Test Mode only)
+Open [http://localhost:3000](http://localhost:3000) and login with `razorpay` / `razorpay`.
 
+---
+
+## Architecture
+
+See **[proposed.md](proposed.md)** for full architecture diagrams and system design.
+
+### High-Level Flow
+
+```
+Overdue Invoice → ML Risk Scoring → Decision Agent → Policy Engine → Execute Action
+                                                                     ↓
+                                              ┌──────────────────────┤
+                                              ↓                      ↓
+                                           Email              WhatsApp
+                                              ↓                      ↓
+                                         Payment Link ←──────────────┘
+                                              ↓
+                                         Razorpay Checkout
+                                              ↓
+                                         Webhook → Case Closed
+```
+
+### Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 16, React 19, Tailwind CSS |
+| Backend | Next.js API Routes |
+| Database | PostgreSQL (Neon) + Prisma ORM |
+| Auth | NextAuth v5 |
+| Payments | Razorpay Test Mode |
+| Email | Gmail SMTP (nodemailer) |
+| WhatsApp | Meta Cloud API |
+| ML | Logistic Regression (custom) |
+| LLM | GPT-4o-mini |
+| Hosting | Vercel |
+
+---
+
+## Environment Variables
+
+Create `.env` in repository root:
+
+### Required
+```env
+DATABASE_URL="postgresql://..."
+DIRECT_URL="postgresql://..."
+AUTH_SECRET="your-secret"
+NEXTAUTH_SECRET="your-secret"
+```
+
+### Razorpay
 ```env
 RAZORPAY_KEY_ID="rzp_test_..."
 RAZORPAY_KEY_SECRET="..."
 RAZORPAY_WEBHOOK_SECRET="..."
 ```
 
-Leave these unset to use the deterministic local simulation path. Never commit
-Razorpay keys, use a live key for the demo, or treat the local demo login as a
-Razorpay account.
-
-### Voice (optional)
-
+### Email
 ```env
-# Voice Reminders (Future Update)
-# VAPI_API_KEY="..."
-# VAPI_PHONE_NUMBER_ID="..."
-# VAPI_ASSISTANT_ID="..."
-SARVAM_API_KEY="..."
+GMAIL_USER="your-email@gmail.com"
+GMAIL_APP_PASSWORD="your-app-password"
 ```
 
-### Cron Security
-
+### AI (Optional - uses fallback if not set)
 ```env
-CRON_SECRET="set-a-long-random-value"
-# Optional legacy alias (if present, keep it identical)
-REMINDER_CRON_SECRET="same-value-as-cron-secret"
+OPENAI_API_KEY="sk-..."
 ```
 
-## 8. Local Setup
-
-```bash
-npm install
-npx prisma generate
-npx prisma migrate deploy
-npm run dev
+### Cron
+```env
+CRON_SECRET="long-random-secret"
 ```
 
-pnpm alternative:
+---
+
+## Demo Setup
+
+### Seed Demo Data
 
 ```bash
-pnpm install
-pnpm prisma generate
-pnpm prisma migrate deploy
-pnpm dev
-```
-
-### Razorpay AI Recovery showcase
-
-For an isolated, no-cloud local demo database:
-
-```bash
-./scripts/local-db.sh start
-export DATABASE_URL='postgresql://postgres@127.0.0.1:5433/invonotify?sslmode=disable'
-export DIRECT_URL="$DATABASE_URL"
-pnpm exec prisma migrate deploy
-```
-
-Then create the deterministic showcase portfolio and verify its safe audit
-walkthrough:
-
-```bash
+# Reset and seed 9 customers, 15 invoices
 pnpm ai:seed
-pnpm ai:verify
+
+# Run AI sweep (safe demo mode)
+curl -X POST http://localhost:3000/api/ai/recovery \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": true}'
+```
+
+### Demo Dataset
+
+| Customer | CIBIL | Risk | Demonstrates |
+|----------|-------|------|--------------|
+| Acme Traders | 720 | LOW | Gentle reminder |
+| Beta Industries | 580 | HIGH | Human approval required |
+| Gamma Retail | 810 | LOW | Excellent payer |
+| Delta Logistics | 620 | HIGH | Chronic late payer |
+| Epsilon Foods | 700 | MEDIUM | Payment link |
+| Zeta Pharma | 690 | BLOCKED | Opted out |
+| Omega Constructions | 750 | VIP | Human handled |
+| Kappa Textiles | 660 | STOP | Below cost floor |
+| Sigma Electronics | 540 | CRITICAL | Escalate immediately |
+
+---
+
+## AI Recovery System
+
+### ML Risk Model
+
+11 features scored via logistic regression:
+
+```typescript
+{
+  amountDue,           // 0.15 weight
+  daysOverdue,         // 0.20 weight
+  customerAgeDays,     // 0.05 weight
+  previousInvoiceCount,// 0.08 weight
+  previousLatePayments,// 0.18 weight
+  averagePaymentDelayDays, // 0.12 weight
+  paymentSuccessRate,  // 0.10 weight
+  previousReminders,   // 0.05 weight
+  isVipExempt,         // 0.02 weight
+  cibilScore,          // 0.03 weight
+  humanEngaged         // 0.02 weight
+}
+```
+
+### Risk Levels
+
+| Score | Level | Action |
+|-------|-------|--------|
+| ≥ 0.85 | CRITICAL | Escalate to human |
+| ≥ 0.70 | HIGH | Aggressive follow-up |
+| ≥ 0.40 | MEDIUM | Payment link + reminders |
+| < 0.40 | LOW | Gentle nudge |
+
+### Policy Guardrails
+
+9 guardrails prevent:
+- Contacting opted-out customers
+- Harassment (frequency caps)
+- Contacting outside business hours
+- Auto-sending large amounts (requires approval)
+- Chasing invoices below cost floor
+
+---
+
+## Dashboard Pages
+
+| Route | Description |
+|-------|-------------|
+| `/dashboard` | Main KPIs and metrics |
+| `/dashboard/invoices` | Invoice list + create |
+| `/dashboard/recovery` | AI recovery war room |
+| `/dashboard/recovery/analytics` | Funnel + baseline comparison |
+| `/dashboard/diagnosis` | ML failure classification |
+| `/dashboard/credit-scores` | CIBIL score dashboard |
+| `/dashboard/promises` | Promise-to-pay tracking |
+| `/dashboard/whatsapp` | WhatsApp channel config |
+| `/dashboard/customers` | Customer management |
+| `/dashboard/settings` | Merchant settings |
+
+---
+
+## API Reference
+
+### Core Endpoints
+- `POST /api/invoices` — Create invoice
+- `GET /api/invoices` — List invoices
+- `POST /api/payments` — Record payment
+- `POST /api/invoices/[id]/send` — Send invoice email
+
+### AI Recovery
+- `GET /api/ai/recovery` — List recovery cases
+- `POST /api/ai/recovery` — Run AI sweep
+- `POST /api/ai/recovery/[id]/approve` — Approve action
+
+### v1 API
+- `POST /api/v1/recovery-cases/[id]/diagnose` — ML diagnosis
+- `POST /api/v1/recovery-cases/[id]/score` — Risk scoring
+- `POST /api/v1/recovery-cases/[id]/promises` — Create promise
+- `POST /api/v1/promises/reminders` — Process reminders
+- `POST /api/v1/credit-score` — Fetch credit scores
+
+### Webhooks
+- `GET/POST /api/webhooks/razorpay` — Razorpay payment events
+
+---
+
+## Razorpay Integration
+
+### Payment Link Flow
+
+1. AI creates payment link via `POST /payment_links`
+2. Link URL included in email + WhatsApp
+3. Customer clicks → Razorpay checkout
+4. Payment succeeds → Webhook fires
+5. Invoice marked as paid → Case closed
+
+### Webhook Handling
+
+```typescript
+// GET handler (callback_method: "get")
+GET /api/webhooks/razorpay?razorpay_payment_id=...&razorpay_payment_link_status=paid
+
+// POST handler (webhook events)
+POST /api/webhooks/razorpay
+```
+
+---
+
+## Testing
+
+```bash
+# AI unit tests (15 tests)
 pnpm ai:unit
-pnpm ai:evaluate
+
+# Full test suite (42 tests)
+npx tsx --test tests/ai/agent/decision-agent.test.ts tests/ai/policy/engine.test.ts
+
+# TypeScript check
+npx tsc --noEmit
 ```
 
-Sign in at `/login` with `razorpay` / `razorpay`, then
-open `/dashboard/recovery` and select **Run Safe Demo**. It records decisions,
-policy verdicts and audit evidence without sending messages or creating payment
-links. The account is a local seeded merchant workspace; it is not connected to
-Razorpay until you deliberately configure Razorpay **Test Mode** keys. See
-[`PRD.md`](PRD.md) for the end-to-end demo runbook and
-[`docs/AI_MODEL_SETUP.md`](docs/AI_MODEL_SETUP.md) for the optional model setup.
-Run `pnpm ai:batch` for the reproducible 500-event ingestion proof, then use
-`pnpm ai:verify` for the safe 500-case recovery walkthrough. The documented v1
-API contract is at [`docs/openapi/recovery-v1.yaml`](docs/openapi/recovery-v1.yaml).
+---
 
-If you are starting from a clean local DB and want schema sync quickly:
+## Deployment
+
+### Vercel
 
 ```bash
-npx prisma db push
+# Push to GitHub
+git push origin main
+
+# Vercel auto-deploys from main branch
 ```
 
-## 9. Database Setup and Migrations
+### Environment Variables (Vercel)
 
-- Schema source of truth: `prisma/schema.prisma`
-- Migration files: `prisma/migrations/**`
-- Generate Prisma client after schema changes:
+Set in Vercel Dashboard → Settings → Environment Variables:
+- `DATABASE_URL`
+- `RAZORPAY_KEY_ID`
+- `RAZORPAY_KEY_SECRET`
+- `GMAIL_USER`
+- `GMAIL_APP_PASSWORD`
+- `CRON_SECRET`
 
-```bash
-npx prisma generate
+### GitHub Actions
+
+- **CI:** Runs tests on every push
+- **Recovery Sweep:** Cron job every 6 hours
+
+---
+
+## Project Structure
+
+```
+app/                    Next.js pages and API routes
+├── dashboard/          Dashboard pages
+│   ├── credit-scores/  CIBIL score dashboard
+│   ├── diagnosis/      ML failure diagnosis
+│   ├── invoices/       Invoice management
+│   ├── promises/       Promise-to-pay
+│   ├── recovery/       AI recovery + analytics
+│   └── whatsapp/       WhatsApp channel
+├── invoice/            Public invoice pages
+└── api/                Backend API routes
+    ├── ai/             AI recovery endpoints
+    ├── v1/             v1 API endpoints
+    └── webhooks/       Webhook handlers
+
+lib/                    Shared utilities
+├── ai/                 AI engine (ML, decisions, policies)
+├── razorpay.ts         Razorpay integration
+├── whatsapp.ts         WhatsApp Cloud API
+├── credit-bureau.ts    Credit score fetching
+└── mail-service.ts     Email + WhatsApp delivery
+
+components/             React components
+├── customers/          CIBIL meter gauge
+├── recovery/           Recovery case components
+└── ui/                 Base UI primitives
 ```
 
-## 10. Running the App
+---
 
-- Dev server:
+## Documentation
 
-```bash
-npm run dev
-```
+- **[Architecture & System Design →](proposed.md)**
+- [PRD.md](PRD.md) — Product requirements
+- [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — 5-minute demo script
+- [DEMO_VIDEO_PIPELINE.md](DEMO_VIDEO_PIPELINE.md) — Video creation guide
 
-- Build:
+---
 
-```bash
-npm run build
-```
+## License
 
-- Production start:
-
-```bash
-npm run start
-```
-
-## 11. Reminder Automation (Local and Cloud)
-
-### Cloud (Vercel)
-
-- `vercel.json` triggers `/api/reminders/auto` daily at 7:00 PM IST (`30 13 * * *` UTC).
-- Set `CRON_SECRET` in Vercel Project Environment Variables (important: Vercel cron uses this name for bearer auth).
-- Keep `REMINDER_CRON_SECRET` only as an optional legacy compatibility alias, with the same value as `CRON_SECRET`.
-- After changing env vars, redeploy the project.
-
-### Local (Windows Task Scheduler)
-
-- Launcher: `scripts/automation/run-reminders.bat`
-- Script: `scripts/automation/run-reminders.js`
-- Logs: `logs/reminder-cron.log`
-- Ensure target URL is reachable when scheduler runs:
-  - Set `REMINDER_TARGET_URL` (or `SITE_URL`) to your live app URL, or
-  - Keep localhost and ensure Next.js server is running at schedule time.
-
-Manual test run:
-
-```bash
-node --env-file=.env scripts/automation/run-reminders.js
-```
-
-## 12. API Surface
-
-Representative route groups:
-
-- Auth: `app/api/auth/[...nextauth]/route.ts`
-- Dashboard: `app/api/dashboard/stats/route.ts`
-- Invoices: `app/api/invoices/route.ts`, `app/api/invoices/[id]/route.ts`
-- Customers: `app/api/customers/route.ts`
-- Products: `app/api/products/route.ts`
-- Payments: `app/api/payments/route.ts`
-- Reminders: `app/api/reminders/auto/route.ts`, `app/api/reminders/send/route.ts`
-- Integrations: OCR, SMS, voice, TTS endpoints under `app/api/**`
-
-## 13. Security Model
-
-- Protected dashboard routes via `middleware.ts` matcher.
-- API-level auth checks with `auth()` in route handlers.
-- User-scoped queries in invoice/dashboard endpoints.
-- Secret-based authorization for cron-triggered reminder sweep.
-
-## 14. Performance Guidelines
-
-Apply these before considering a separate backend service:
-
-1. Prefer server-side data loading for heavy dashboard views.
-2. Use endpoint caching/revalidation where appropriate.
-3. Paginate large invoice lists and avoid over-fetching fields.
-4. Keep indexes aligned with real filters (`userId`, `status`, `dueDate`).
-5. Move long-running work to background execution paths.
-6. Monitor slow queries and p95 endpoint latency.
-
-## 15. Troubleshooting
-
-### App fails to start
-
-- Verify Node version: `node -v`
-- Reinstall dependencies: `npm install`
-- Confirm `.env` values are present.
-
-### Prisma errors
-
-- Regenerate client: `npx prisma generate`
-- Apply migrations: `npx prisma migrate deploy`
-- Verify DB connectivity in `DATABASE_URL`.
-
-### Reminders not triggering
-
-- Check `REMINDER_CRON_SECRET` and `CRON_SECRET` values.
-- Confirm scheduler invokes `scripts/automation/run-reminders.bat`.
-- Inspect `logs/reminder-cron.log`.
-- Test endpoint manually via script command above.
-- If you see `ECONNREFUSED`, your target URL is down/unreachable at runtime.
-- If you see `401 Unauthorized` from Vercel cron, set `CRON_SECRET` in Vercel and redeploy.
-
-### SMS or voice failures
-
-- Validate Twilio/VAPI environment variables.
-- Check provider account status and sender number permissions.
-
-## 16. Documentation Map
-
-- Documentation index: `Documentation/README.md`
-- Main architecture narrative: `Documentation/architecture/system-architecture.md`
-- Detailed diagrams: `Documentation/architecture/system-architecture-diagrams.md`
-- Product/system requirements: `Documentation/SRS.md`
-- Script operations guide: `scripts/README.md`
-
-## 17. License
-
-Project developed for B2B Invoice Management. All rights reserved.
-
-## 18. Hardware Demo Data
-
-The `data/` folder now includes hardware-company fixtures that match the live import routes and are suitable for demos, presentations, and bulk import testing.
-
-### Included Files
-
-- `data/hardware_customers.yml`
-- `data/hardware_transactions.yml`
-- `data/hardware_end_to_end.yml`
-- `data/hardware_bulk_demo.yml`
-
-### Sample Customer Emails
-
-- `heetmehta18125@gmail.com`
-- `ommistry5559@gmail.com`
-- `heetpersonal1812@gmail.com`
-
-### What These Fixtures Demonstrate
-
-- Realistic hardware retail and wholesale customers.
-- Invoice imports with stock items, GST allocations, and due dates.
-- Reminder-ready transactions with email and SMS/BOTH channels.
-- End-to-end linking between customer data and invoices.
-
-### Recommended Demo Flow
-
-1. Import `hardware_customers.yml`.
-2. Import `hardware_bulk_demo.yml` or `hardware_end_to_end.yml`.
-3. Open the dashboard and review customer risk and overdue balances.
-4. Explain how reminder rules are derived from due dates and invoice status.
+Developed for Razorpay Hackathon. All rights reserved.
