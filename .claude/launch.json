@@ -1,0 +1,44 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "db",
+      "runtimeExecutable": "./scripts/local-db.sh",
+      "runtimeArgs": [
+        "run"
+      ],
+      "port": 5433,
+      "autoPort": false
+    },
+    {
+      "name": "dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3001,
+      "autoPort": false
+    },
+    {
+      "name": "seed",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "DATABASE_URL='postgresql://postgres@127.0.0.1:5433/invonotify?sslmode=disable' DIRECT_URL='postgresql://postgres@127.0.0.1:5433/invonotify?sslmode=disable' npx tsx scripts/ai/seed-recovery-data.ts --prune; echo '--- seed finished ---'; node -e \"require('http').createServer(function(_,r){r.end('seed target idle')}).listen(5555,'127.0.0.1')\""
+      ],
+      "port": 5555,
+      "autoPort": false
+    },
+    {
+      "name": "verify",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "DATABASE_URL='postgresql://postgres@127.0.0.1:5433/invonotify?sslmode=disable' DIRECT_URL='postgresql://postgres@127.0.0.1:5433/invonotify?sslmode=disable' pnpm run ai:verify 2>&1; echo '--- verify finished ---'; node -e \"require('http').createServer(function(_,r){r.end('verify target idle')}).listen(5556,'127.0.0.1')\""
+      ],
+      "port": 5556,
+      "autoPort": false
+    }
+  ]
+}

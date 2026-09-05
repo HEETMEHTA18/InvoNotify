@@ -5,6 +5,7 @@
 An AI-powered invoice recovery platform that automatically detects overdue invoices, assesses risk using machine learning, and executes multi-channel recovery actions via Razorpay payment links.
 
 **Live Demo:** [invonotify.vercel.app](https://invonotify.vercel.app)
+**Live Demo:** [YouTube](https://youtu.be/3bWHbE2UdTU)
 
 ---
 
