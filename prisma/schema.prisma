@@ -284,6 +284,16 @@ model RecoveryCase {
   riskScore          Decimal  @default(0) @db.Decimal(5, 4)
   paymentProbability Decimal  @default(0) @db.Decimal(5, 4)
   expectedRecovery   Decimal  @default(0) @db.Decimal(12, 2)
+  /// Permanent randomized experiment arm. HOLD is a control cohort that is
+  /// scored and audited but never contacted, so AI-vs-baseline recovery is
+  /// measured on confirmed settlements instead of a simulated model.
+  /// Assigned once at case creation; legacy cases stay NULL and are excluded.
+  experimentArm      String   @default("TREAT")
+  experimentAssignedAt DateTime?
+  /// Non-null marks a case that must never enter the experiment (for example
+  /// seeded demo fixtures), so synthetic data cannot masquerade as a measured
+  /// outcome.
+  experimentExcludedReason String?
   strategy           String?
   lastDecision       String?
   nextActionAt       DateTime?
@@ -304,11 +314,13 @@ model RecoveryCase {
   humanReviews       HumanReview[]
   auditLogs          AuditLog[]
   riskAssessments    RiskAssessment[]
+  trustFinAssessments TrustFinAssessment[]
 
   @@index([ownerUserId])
   @@index([status])
   @@index([riskScore])
   @@index([ownerUserId, status])
+  @@index([experimentArm, status])
 }
 
 // ===========================
@@ -879,4 +891,26 @@ model BatchRun {
   @@index([merchantId])
   @@index([status])
   @@index([startedAt])
+}
+/// Audit record for the optional TrustFin-SLM verifier. One row per decision
+/// that reached verification, including runs where the service was down.
+model TrustFinAssessment {
+  id             Int      @id @default(autoincrement())
+  recoveryCaseId Int
+  actionId       Int?
+  /// "remote" when the service answered, "unavailable" when it did not.
+  source         String
+  modelVersion   String?
+  risk           Decimal? @db.Decimal(5, 4)
+  threshold      Decimal? @db.Decimal(5, 4)
+  abstained      Boolean  @default(false)
+  /// Final gate outcome: ALLOW or REQUIRE_HUMAN_APPROVAL.
+  verdict        String
+  reasons        Json?
+  features       Json?
+  createdAt      DateTime @default(now())
+  recoveryCase   RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+
+  @@index([recoveryCaseId, createdAt])
+  @@index([verdict, createdAt])
 }

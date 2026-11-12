@@ -26,6 +26,14 @@ const envSchema = z.object({
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
   DISABLE_LLM_AGENT: z.enum(["true", "false"]).optional(),
 
+  // TrustFin-SLM verifier (optional — the pipeline works without it)
+  TRUSTFIN_RISK_URL: z.string().url().optional(),
+  TRUSTFIN_RISK_THRESHOLD: z.coerce.number().min(0).max(1).optional(),
+  TRUSTFIN_REQUIRED: z.enum(["true", "false"]).optional(),
+  TRUSTFIN_REQUIRE_GROUNDING: z.enum(["true", "false"]).optional(),
+  TRUSTFIN_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+  TRUSTFIN_MODEL_VERSION: z.string().optional(),
+
   // Cron
   CRON_SECRET: z.string().min(8).optional(),
 
@@ -100,6 +108,41 @@ export function getLlmConfig() {
     timeout: env.LLM_TIMEOUT_MS || 15000,
     disabled: env.DISABLE_LLM_AGENT === "true",
   };
+}
+
+export type TrustFinConfig = {
+  url: string | null;
+  threshold: number;
+  required: boolean;
+  requireGrounding: boolean;
+  timeoutMs: number;
+  modelVersion: string | null;
+};
+
+/**
+ * TrustFin-SLM verifier configuration.
+ *
+ * Read straight from the environment so a sweep can never fail because an
+ * optional verifier is absent. `required` is the only setting that changes
+ * behaviour when the service is down: it then routes to a human instead of
+ * letting the autonomous action proceed.
+ */
+export function getTrustFinConfig(): TrustFinConfig {
+  const env = process.env;
+  const threshold = Number(env.TRUSTFIN_RISK_THRESHOLD);
+  const timeout = Number(env.TRUSTFIN_TIMEOUT_MS);
+  return {
+    url: env.TRUSTFIN_RISK_URL?.trim() || null,
+    threshold: Number.isFinite(threshold) && threshold >= 0 && threshold <= 1 ? threshold : 0.5,
+    required: env.TRUSTFIN_REQUIRED === "true",
+    requireGrounding: env.TRUSTFIN_REQUIRE_GROUNDING === "true",
+    timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : 4000,
+    modelVersion: env.TRUSTFIN_MODEL_VERSION?.trim() || null,
+  };
+}
+
+export function isTrustFinConfigured(): boolean {
+  return Boolean(process.env.TRUSTFIN_RISK_URL?.trim());
 }
 
 export function getPaymentProvider(): "razorpay" | "stripe" | "none" {

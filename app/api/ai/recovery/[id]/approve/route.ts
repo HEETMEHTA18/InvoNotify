@@ -69,6 +69,19 @@ export async function POST(
       );
     }
 
+    // The holdout arm is a measurement cohort, not a normal case. Contacting it
+    // — even by hand — would contaminate the only causal comparison we have, so
+    // it is refused at the API boundary rather than merely skipped in the sweep.
+    if (recoveryCase.experimentAssignedAt && recoveryCase.experimentArm === "HOLD") {
+      return NextResponse.json(
+        {
+          error:
+            "Recovery case is in the permanent holdout (control) arm and must not be contacted",
+        },
+        { status: 409 },
+      );
+    }
+
     const pendingAction = recoveryCase.actions[0];
     if (!pendingAction) {
       return NextResponse.json(

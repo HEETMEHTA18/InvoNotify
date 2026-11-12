@@ -27,6 +27,8 @@
     "ai:eval": "python3 ai/ml/training/train.py --dry-run",
     "qa:simulate-failures": "npx tsx scripts/ai/simulate-failures.ts",
     "ai:evaluate": "npx tsx scripts/ai/evaluate-recovery.ts",
+    "ai:holdout": "node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/holdout-report.ts",
+    "trustfin:smoke": "node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/trustfin-smoke.ts",
     "ai:verify": "DISABLE_LLM_AGENT=true node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/verify-local.ts",
     "ai:batch": "DISABLE_LLM_AGENT=true node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/run-hackathon-batch.ts",
     "ai:scheduled-actions": "node --import tsx --import ./scripts/ai/loaders/register.mjs scripts/ai/process-scheduled-actions.ts",

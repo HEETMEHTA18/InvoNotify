@@ -10,6 +10,9 @@ import { getStrategyStats } from "./learning";
 import { CHASEABLE_INVOICE_STATUSES } from "@/lib/customer-credit";
 import { calculateRecoveryCredit } from "./revenue-ledger";
 import { applyContactWindowGuard, getMerchantPolicy } from "./policy/merchant-policy";
+import { assignExperimentArm, type ExperimentArm } from "./holdout";
+import { verifyWithTrustFin } from "./trustfin/client";
+import type { TrustFinAuditRecord } from "./trustfin/types";
 
 const log = createLogger("ai:orchestrator");
 
@@ -46,8 +49,11 @@ export type SweepInvoiceResult = {
   riskLevel: string;
   expectedRecovery: number;
   recommendedAction: string;
-  policyDecision: PolicyVerdict["decision"];
+  /** "HOLD" marks the permanent control arm: scored and audited, never actioned. */
+  policyDecision: PolicyVerdict["decision"] | "HOLD";
   actionStatus: string | null;
+  /** Experiment arm; null only for legacy cases that can no longer be randomised. */
+  arm: ExperimentArm | null;
   error?: string;
 };
 
@@ -62,6 +68,10 @@ export type SweepResult = {
   expectedRecoveryAmount: number;
   /** Recommendations simulated without an external provider/customer side effect. */
   simulatedActions: number;
+  /** Cases held in the permanent control arm this sweep (scored, never contacted). */
+  holdoutCases: number;
+  /** Cases eligible for AI action this sweep — the experiment's treatment arm. */
+  treatmentCases: number;
   invoiceResults: SweepInvoiceResult[];
 };
 
@@ -146,6 +156,8 @@ export async function runRecoverySweep(options: SweepOptions = {}): Promise<Swee
   let expectedRecoveryAmount = 0;
   let actionCount = 0;
   let simulatedActionCount = 0;
+  let holdoutCaseCount = 0;
+  let treatmentCaseCount = 0;
 
   for (const invoice of invoices) {
     // Timeout guard: stop processing if we're running out of time
@@ -181,6 +193,12 @@ export async function runRecoverySweep(options: SweepOptions = {}): Promise<Swee
         simulatedActionCount += 1;
       }
 
+      if (result.arm === "HOLD") {
+        holdoutCaseCount += 1;
+      } else if (result.arm === "TREAT") {
+        treatmentCaseCount += 1;
+      }
+
       invoiceResults.push(result);
     } catch (error) {
       invoiceResults.push({
@@ -193,6 +211,7 @@ export async function runRecoverySweep(options: SweepOptions = {}): Promise<Swee
         recommendedAction: "ERROR",
         policyDecision: "BLOCK",
         actionStatus: null,
+        arm: null,
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -211,6 +230,8 @@ export async function runRecoverySweep(options: SweepOptions = {}): Promise<Swee
         invoiceResults: invoiceResults.slice(0, 50),
         expectedRecoveryAmount,
         simulatedActionCount,
+        holdoutCaseCount,
+        treatmentCaseCount,
         dryRun: Boolean(options.dryRun),
         completedAt: new Date().toISOString(),
       },
@@ -226,6 +247,8 @@ export async function runRecoverySweep(options: SweepOptions = {}): Promise<Swee
     recoveredAmount,
     expectedRecoveryAmount,
     simulatedActions: simulatedActionCount,
+    holdoutCases: holdoutCaseCount,
+    treatmentCases: treatmentCaseCount,
     invoiceResults,
   };
 }
@@ -245,9 +268,19 @@ async function processInvoice(
   const context = await buildRecoveryContext(invoiceId);
   const invoice = context.invoice;
 
+  // Permanent experiment assignment: deterministic in (merchant, invoiceId) so
+  // retries and restarts cannot re-roll it, and persisted on the case so a later
+  // rate change cannot move an existing case between arms.
+  const candidateArm = assignExperimentArm({
+    invoiceId,
+    ownerUserId: opts.ownerUserId,
+  });
+
   const recoveryCase = await prisma.recoveryCase.upsert({
     where: { invoiceId },
     create: {
+      experimentArm: candidateArm,
+      experimentAssignedAt: opts.now,
       invoiceId,
       ownerUserId: opts.ownerUserId,
       status: "OPEN",
@@ -264,6 +297,33 @@ async function processInvoice(
       expectedRecovery: context.risk.expectedRecovery,
     },
   });
+
+  // Legacy cases created before the experiment existed can only join the control
+  // arm honestly if they have never been contacted — a case that already received
+  // outreach is not a valid counterfactual. Those stay unassigned and are
+  // excluded from the report instead of biasing it.
+  let arm: ExperimentArm | null = recoveryCase.experimentAssignedAt
+    ? (recoveryCase.experimentArm as ExperimentArm)
+    : null;
+  // Seeded/synthetic inventory is deliberately kept out of the experiment, so a
+  // fixture can never be counted as a measured outcome.
+  const experimentExcluded = Boolean(recoveryCase.experimentExcludedReason);
+  if (!arm && !experimentExcluded) {
+    const priorContactAttempts = await prisma.agentAction.count({
+      where: {
+        recoveryCaseId: recoveryCase.id,
+        actionType: { in: CONTACT_ACTIONS },
+        status: { in: ["EXECUTED", "SCHEDULED"] },
+      },
+    });
+    if (priorContactAttempts === 0) {
+      await prisma.recoveryCase.update({
+        where: { id: recoveryCase.id },
+        data: { experimentArm: candidateArm, experimentAssignedAt: opts.now },
+      });
+      arm = candidateArm;
+    }
+  }
 
   // A sweep can be triggered repeatedly by a scheduler, a webhook and an
   // operator. Once a case is terminal, it must never create another autonomous
@@ -293,6 +353,51 @@ async function processInvoice(
       recommendedAction: "STOP",
       policyDecision: "BLOCK",
       actionStatus: "SKIPPED_TERMINAL_CASE",
+      arm,
+    };
+  }
+
+  // Permanent control arm: score and audit, never contact. This is what makes
+  // the AI-vs-baseline comparison a measurement rather than a simulation — the
+  // held cases follow the same clock and the same payment webhooks as treated
+  // ones, so the only difference between the arms is the agent itself.
+  if (arm === "HOLD") {
+    const alreadyRecorded = await prisma.auditLog.count({
+      where: { recoveryCaseId: recoveryCase.id, eventType: "RECOVERY_HOLDOUT_HELD" },
+    });
+    if (alreadyRecorded === 0) {
+      await prisma.$transaction([
+        prisma.recoveryCase.update({
+          where: { id: recoveryCase.id },
+          data: { stage: "HOLDOUT", nextActionAt: null },
+        }),
+        prisma.auditLog.create({
+          data: {
+            recoveryCaseId: recoveryCase.id,
+            eventType: "RECOVERY_HOLDOUT_HELD",
+            actor: "recovery-orchestrator",
+            metadata: {
+              agentRunId: runId,
+              experimentArm: "HOLD",
+              amountAtRisk: invoice.balance,
+              note: "Scored and audited; deliberately not contacted (control arm)",
+            },
+          },
+        }),
+      ]);
+    }
+
+    return {
+      invoiceId,
+      invoiceNumber: invoice.invoiceNumber || `#${invoice.id}`,
+      status: invoice.status,
+      riskScore: context.risk.riskScore,
+      riskLevel: context.risk.riskLevel,
+      expectedRecovery: context.risk.expectedRecovery,
+      recommendedAction: "HOLD_OUT",
+      policyDecision: "HOLD",
+      actionStatus: "HELD_OUT",
+      arm,
     };
   }
 
@@ -317,13 +422,30 @@ async function processInvoice(
     history,
     limits: merchantPolicy.limits,
   });
-  const verdict = applyContactWindowGuard({
+  let verdict = applyContactWindowGuard({
     verdict: evaluatedVerdict,
     action: decision.recommendedAction,
     now: opts.now,
     merchantBusinessHours: merchantPolicy.businessHours,
     customerContactWindow: context.customer.contactWindow,
   });
+
+  // TrustFin verification. It runs only after the deterministic policy engine
+  // has said ALLOW and can only downgrade that ALLOW to a human review — it can
+  // never override a BLOCK or widen the action space. With no verifier
+  // configured (the default) this is a single cheap no-op.
+  let trustFinAssessment: TrustFinAuditRecord | null = null;
+  if (verdict.decision === "ALLOW") {
+    const verification = await verifyWithTrustFin({ context, decision });
+    trustFinAssessment = verification.audit;
+    if (verification.decision === "REQUIRE_HUMAN_APPROVAL") {
+      verdict = {
+        decision: "REQUIRE_HUMAN_APPROVAL",
+        approvalRequired: true,
+        reasons: [...verdict.reasons, ...verification.reasons],
+      };
+    }
+  }
 
   let actionStatus: string | null = null;
   let payload: Record<string, unknown> | null = null;
@@ -458,6 +580,24 @@ async function processInvoice(
         optOut: context.customer.communicationOptOut,
       },
     }),
+    ...(trustFinAssessment
+      ? [
+          prisma.trustFinAssessment.create({
+            data: {
+              recoveryCaseId: recoveryCase.id,
+              actionId: createdAction.id,
+              source: trustFinAssessment.source,
+              modelVersion: trustFinAssessment.modelVersion,
+              risk: trustFinAssessment.risk,
+              threshold: trustFinAssessment.threshold,
+              abstained: trustFinAssessment.abstained,
+              verdict: trustFinAssessment.verdict,
+              reasons: trustFinAssessment.reasons,
+              features: trustFinAssessment.features,
+            },
+          }),
+        ]
+      : []),
     prisma.auditLog.create({
       data: {
         recoveryCaseId: recoveryCase.id,
@@ -473,6 +613,15 @@ async function processInvoice(
           policyReasons: verdict.reasons,
           policyVersion: merchantPolicy.version,
           modelUsed: decision.modelUsed,
+          trustFin: trustFinAssessment
+            ? {
+                source: trustFinAssessment.source,
+                risk: trustFinAssessment.risk,
+                threshold: trustFinAssessment.threshold,
+                abstained: trustFinAssessment.abstained,
+                verdict: trustFinAssessment.verdict,
+              }
+            : null,
           dryRun: Boolean(opts.dryRun),
         },
       },
@@ -489,6 +638,7 @@ async function processInvoice(
     recommendedAction: decision.recommendedAction,
     policyDecision: verdict.decision,
     actionStatus,
+    arm,
     error: failureReason || undefined,
   };
 }

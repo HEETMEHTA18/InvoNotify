@@ -505,6 +505,17 @@ async function seed() {
         },
       });
 
+      // Seeded demo inventory is deliberately kept out of the measured
+      // holdout experiment: fixtures must never be reported as a real
+      // AI-versus-control outcome.
+      await prisma.recoveryCase.update({
+        where: { id: caseRow.id },
+        data: {
+          experimentAssignedAt: null,
+          experimentArm: "TREAT",
+          experimentExcludedReason: "SEEDED_DEMO",
+        },
+      });
       if (isRecovered) {
         const paidAt = new Date(Date.now() - (spec.recoveredDaysAgo ?? 1) * DAY);
         const transactionId = existingRecoveryPayment?.transactionId ?? recoveryTransactionId;
