@@ -1,4 +1,5 @@
 import { Prisma, prisma } from "@/lib/db";
+import { assignExperimentArm } from "@/lib/ai/holdout";
 import { toInputJson } from "@/lib/json";
 import { z } from "zod";
 
@@ -330,6 +331,13 @@ async function linkEventToRecoveryCase(args: {
           status: "OPEN",
           stage: "INGESTED",
           amountAtRisk: input.amount,
+          // Assignment happens exactly once, when the case is created, so every
+          // ingested receivable enters the holdout experiment at intake.
+          experimentArm: assignExperimentArm({
+            invoiceId: invoice.id,
+            ownerUserId: merchantId,
+          }),
+          experimentAssignedAt: new Date(),
         },
         select: { id: true },
       }));
