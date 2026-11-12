@@ -11,6 +11,8 @@ import { CHASEABLE_INVOICE_STATUSES } from "@/lib/customer-credit";
 import { calculateRecoveryCredit } from "./revenue-ledger";
 import { applyContactWindowGuard, getMerchantPolicy } from "./policy/merchant-policy";
 import { assignExperimentArm, type ExperimentArm } from "./holdout";
+import { verifyWithTrustFin } from "./trustfin/client";
+import type { TrustFinAuditRecord } from "./trustfin/types";
 
 const log = createLogger("ai:orchestrator");
 
@@ -420,13 +422,30 @@ async function processInvoice(
     history,
     limits: merchantPolicy.limits,
   });
-  const verdict = applyContactWindowGuard({
+  let verdict = applyContactWindowGuard({
     verdict: evaluatedVerdict,
     action: decision.recommendedAction,
     now: opts.now,
     merchantBusinessHours: merchantPolicy.businessHours,
     customerContactWindow: context.customer.contactWindow,
   });
+
+  // TrustFin verification. It runs only after the deterministic policy engine
+  // has said ALLOW and can only downgrade that ALLOW to a human review — it can
+  // never override a BLOCK or widen the action space. With no verifier
+  // configured (the default) this is a single cheap no-op.
+  let trustFinAssessment: TrustFinAuditRecord | null = null;
+  if (verdict.decision === "ALLOW") {
+    const verification = await verifyWithTrustFin({ context, decision });
+    trustFinAssessment = verification.audit;
+    if (verification.decision === "REQUIRE_HUMAN_APPROVAL") {
+      verdict = {
+        decision: "REQUIRE_HUMAN_APPROVAL",
+        approvalRequired: true,
+        reasons: [...verdict.reasons, ...verification.reasons],
+      };
+    }
+  }
 
   let actionStatus: string | null = null;
   let payload: Record<string, unknown> | null = null;
@@ -561,6 +580,24 @@ async function processInvoice(
         optOut: context.customer.communicationOptOut,
       },
     }),
+    ...(trustFinAssessment
+      ? [
+          prisma.trustFinAssessment.create({
+            data: {
+              recoveryCaseId: recoveryCase.id,
+              actionId: createdAction.id,
+              source: trustFinAssessment.source,
+              modelVersion: trustFinAssessment.modelVersion,
+              risk: trustFinAssessment.risk,
+              threshold: trustFinAssessment.threshold,
+              abstained: trustFinAssessment.abstained,
+              verdict: trustFinAssessment.verdict,
+              reasons: trustFinAssessment.reasons,
+              features: trustFinAssessment.features,
+            },
+          }),
+        ]
+      : []),
     prisma.auditLog.create({
       data: {
         recoveryCaseId: recoveryCase.id,
@@ -576,6 +613,15 @@ async function processInvoice(
           policyReasons: verdict.reasons,
           policyVersion: merchantPolicy.version,
           modelUsed: decision.modelUsed,
+          trustFin: trustFinAssessment
+            ? {
+                source: trustFinAssessment.source,
+                risk: trustFinAssessment.risk,
+                threshold: trustFinAssessment.threshold,
+                abstained: trustFinAssessment.abstained,
+                verdict: trustFinAssessment.verdict,
+              }
+            : null,
           dryRun: Boolean(opts.dryRun),
         },
       },

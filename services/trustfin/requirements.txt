@@ -1,0 +1,12 @@
+# TrustFin risk-estimator service.
+#
+# scikit-learn MUST match the version that produced the joblib artefact, or
+# unpickling fails. The frozen TrustFin environment records 1.9.1; pin whatever
+# `python -m pip freeze` shows in your training environment instead of trusting
+# this range.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+joblib>=1.3,<2
+numpy>=1.26,<3
+scikit-learn>=1.5,<2

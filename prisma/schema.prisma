@@ -314,6 +314,7 @@ model RecoveryCase {
   humanReviews       HumanReview[]
   auditLogs          AuditLog[]
   riskAssessments    RiskAssessment[]
+  trustFinAssessments TrustFinAssessment[]
 
   @@index([ownerUserId])
   @@index([status])
@@ -890,4 +891,26 @@ model BatchRun {
   @@index([merchantId])
   @@index([status])
   @@index([startedAt])
+}
+/// Audit record for the optional TrustFin-SLM verifier. One row per decision
+/// that reached verification, including runs where the service was down.
+model TrustFinAssessment {
+  id             Int      @id @default(autoincrement())
+  recoveryCaseId Int
+  actionId       Int?
+  /// "remote" when the service answered, "unavailable" when it did not.
+  source         String
+  modelVersion   String?
+  risk           Decimal? @db.Decimal(5, 4)
+  threshold      Decimal? @db.Decimal(5, 4)
+  abstained      Boolean  @default(false)
+  /// Final gate outcome: ALLOW or REQUIRE_HUMAN_APPROVAL.
+  verdict        String
+  reasons        Json?
+  features       Json?
+  createdAt      DateTime @default(now())
+  recoveryCase   RecoveryCase @relation(fields: [recoveryCaseId], references: [id], onDelete: Cascade)
+
+  @@index([recoveryCaseId, createdAt])
+  @@index([verdict, createdAt])
 }

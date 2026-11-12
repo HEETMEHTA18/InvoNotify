@@ -49,6 +49,7 @@ InvoNotify solves the ₹50,000 crore problem of unpaid B2B invoices. Instead of
 ### AI Recovery Engine
 - ML risk scoring with 11 weighted features
 - Permanent 10% holdout arm — a control cohort the agent scores and audits but never contacts, so AI-vs-baseline recovery is measured on confirmed settlements (`pnpm ai:holdout`)
+- Optional [TrustFin-SLM](docs/TRUSTFIN_INTEGRATION.md) verifier — a TrustFin risk estimate that can only downgrade an approved action to human review, never unlock a blocked one
 - LLM-powered decision agent (GPT-4o-mini)
 - 9 policy guardrails (no harassment, opt-outs, business hours)
 - Explainable decisions with feature contributions
@@ -165,6 +166,16 @@ OPENAI_API_KEY="sk-..."
 ### Cron
 ```env
 CRON_SECRET="long-random-secret"
+```
+
+### TrustFin verifier (optional)
+See [docs/TRUSTFIN_INTEGRATION.md](docs/TRUSTFIN_INTEGRATION.md) for the full
+contract and AWS deployment guide.
+```env
+TRUSTFIN_RISK_URL="http://127.0.0.1:8080"
+TRUSTFIN_RISK_THRESHOLD="0.5"
+TRUSTFIN_REQUIRED="false"
+TRUSTFIN_REQUIRE_GROUNDING="false"
 ```
 
 ---
@@ -387,6 +398,7 @@ components/             React components
 ## Documentation
 
 - **[Architecture & System Design →](proposed.md)**
+- [TrustFin-SLM integration & AWS deployment](docs/TRUSTFIN_INTEGRATION.md)
 - [PRD.md](PRD.md) — Product requirements
 - [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — 5-minute demo script
 - [DEMO_VIDEO_PIPELINE.md](DEMO_VIDEO_PIPELINE.md) — Video creation guide
